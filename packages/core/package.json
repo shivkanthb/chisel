@@ -1,7 +1,27 @@
 {
-  "name": "@chisel/core",
+  "name": "chisel-engine",
   "version": "0.1.0",
   "description": "Lightweight workflow engine on BullMQ and Redis",
+  "author": "shivkanthb <hi@shiv.cv>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shivkanthb/chisel.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/shivkanthb/chisel",
+  "bugs": "https://github.com/shivkanthb/chisel/issues",
+  "keywords": [
+    "workflow",
+    "bullmq",
+    "redis",
+    "job-queue",
+    "durable-execution",
+    "background-jobs",
+    "steps",
+    "orchestration"
+  ],
+  "sideEffects": false,
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -23,7 +43,8 @@
     "test:watch": "vitest watch",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "bullmq": "^5.0.0",
@@ -44,6 +65,5 @@
     "vitest": "^2.0.0",
     "@types/node": "^22.0.0"
   },
-  "files": ["dist"],
-  "license": "MIT"
+  "files": ["dist"]
 }
