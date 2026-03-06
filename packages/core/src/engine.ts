@@ -11,11 +11,14 @@ import type {
   EngineEventName,
   EngineEvents,
   HealthInfo,
+  ListRunsOptions,
+  ListRunsResult,
   Logger,
   RunInfo,
   AnyTriggerBatchItem,
   TriggerOptions,
   Workflow,
+  WorkflowInfo,
 } from "./types";
 
 type EventHandler<T> = (payload: T) => void;
@@ -340,6 +343,31 @@ export class Engine {
    */
   async getRun(runId: string): Promise<RunInfo | null> {
     return this.state.getRun(runId);
+  }
+
+  /**
+   * List runs for a workflow with cursor-based pagination.
+   */
+  async listRuns(
+    workflowId: string,
+    options?: ListRunsOptions
+  ): Promise<ListRunsResult> {
+    return this.state.listRuns(workflowId, options);
+  }
+
+  /**
+   * List all registered workflows with their config metadata.
+   */
+  listWorkflows(): WorkflowInfo[] {
+    return Array.from(this.workflows.entries()).map(([id, wf]) => ({
+      id,
+      concurrency: wf.config.concurrency?.limit ?? 5,
+      retries: wf.config.retries ?? this.config.defaults?.retries ?? 3,
+      timeout: wf.config.timeout ?? this.config.defaults?.timeout,
+      priority: wf.config.priority,
+      rateLimit: wf.config.rateLimit,
+      hasInput: !!wf.config.input,
+    }));
   }
 
   /**

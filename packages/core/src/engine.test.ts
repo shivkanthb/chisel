@@ -350,6 +350,136 @@ describeWithRedis("Engine (integration)", () => {
     expect(run!.error).toContain("Duplicate step name");
   });
 
+  it("listWorkflows returns registered workflow metadata", async () => {
+    const engine = track(makeEngine());
+
+    const wf1 = defineWorkflow(
+      { id: "test/list-wf-1", concurrency: { limit: 10 }, retries: 5, timeout: 30_000 },
+      async () => "ok"
+    );
+    const wf2 = defineWorkflow(
+      { id: "test/list-wf-2", rateLimit: { max: 100, duration: 60_000 } },
+      async () => "ok"
+    );
+
+    engine.register(wf1);
+    engine.register(wf2);
+
+    const workflows = engine.listWorkflows();
+    expect(workflows).toHaveLength(2);
+
+    const w1 = workflows.find((w) => w.id === "test/list-wf-1")!;
+    expect(w1.concurrency).toBe(10);
+    expect(w1.retries).toBe(5);
+    expect(w1.timeout).toBe(30_000);
+    expect(w1.hasInput).toBe(false);
+
+    const w2 = workflows.find((w) => w.id === "test/list-wf-2")!;
+    expect(w2.rateLimit).toEqual({ max: 100, duration: 60_000 });
+  });
+
+  it("listRuns returns empty result for unknown workflow", async () => {
+    const engine = track(makeEngine());
+    const wf = defineWorkflow({ id: "test/list-empty" }, async () => "ok");
+    engine.register(wf);
+    await engine.start();
+
+    const result = await engine.listRuns("test/list-empty");
+    expect(result.runs).toEqual([]);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it("listRuns returns runs in descending order by default", async () => {
+    const engine = track(makeEngine());
+    const wf = defineWorkflow<{ n: number }>(
+      { id: "test/list-desc" },
+      async (ctx) => ({ n: ctx.data.n })
+    );
+    engine.register(wf);
+    await engine.start();
+
+    const { runId: run1 } = await engine.trigger(wf, { n: 1 });
+    const { runId: run2 } = await engine.trigger(wf, { n: 2 });
+    const { runId: run3 } = await engine.trigger(wf, { n: 3 });
+
+    // Wait for all to complete
+    await waitForRun(engine, run1, 10_000);
+    await waitForRun(engine, run2, 10_000);
+    await waitForRun(engine, run3, 10_000);
+
+    const result = await engine.listRuns("test/list-desc");
+    expect(result.runs.length).toBe(3);
+    // Newest first (desc order)
+    expect(result.runs[0].id).toBe(run3);
+    expect(result.runs[2].id).toBe(run1);
+  });
+
+  it("listRuns supports cursor-based pagination", async () => {
+    const engine = track(makeEngine());
+    const wf = defineWorkflow<{ n: number }>(
+      { id: "test/list-page" },
+      async (ctx) => ({ n: ctx.data.n })
+    );
+    engine.register(wf);
+    await engine.start();
+
+    const runIds: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const { runId } = await engine.trigger(wf, { n: i });
+      runIds.push(runId);
+    }
+    for (const id of runIds) {
+      await waitForRun(engine, id, 10_000);
+    }
+
+    // First page: limit 2
+    const page1 = await engine.listRuns("test/list-page", { limit: 2 });
+    expect(page1.runs.length).toBe(2);
+    expect(page1.nextCursor).not.toBeNull();
+
+    // Second page using cursor
+    const page2 = await engine.listRuns("test/list-page", {
+      limit: 2,
+      cursor: page1.nextCursor!,
+    });
+    expect(page2.runs.length).toBe(1);
+    expect(page2.nextCursor).toBeNull();
+  });
+
+  it("listRuns filters by status", async () => {
+    const engine = track(makeEngine());
+    let shouldFail = false;
+
+    const wf = defineWorkflow(
+      { id: "test/list-filter" },
+      async (ctx) => {
+        if (shouldFail) {
+          throw new FatalError("fail");
+        }
+        return "ok";
+      }
+    );
+    engine.register(wf);
+    await engine.start();
+
+    // Trigger a successful run
+    const { runId: successId } = await engine.trigger(wf, {});
+    await waitForRun(engine, successId, 10_000);
+
+    // Trigger a failed run
+    shouldFail = true;
+    const { runId: failId } = await engine.trigger(wf, {});
+    await waitForRun(engine, failId, 10_000);
+
+    const failed = await engine.listRuns("test/list-filter", { status: "failed" });
+    expect(failed.runs.length).toBe(1);
+    expect(failed.runs[0].status).toBe("failed");
+
+    const completed = await engine.listRuns("test/list-filter", { status: "completed" });
+    expect(completed.runs.length).toBe(1);
+    expect(completed.runs[0].status).toBe("completed");
+  });
+
   it("registers workflows after engine.start()", async () => {
     const engine = track(makeEngine());
     const wf1 = defineWorkflow({ id: "test/before" }, async () => "before");

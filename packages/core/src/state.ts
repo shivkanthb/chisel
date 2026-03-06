@@ -1,6 +1,8 @@
 import Redis from "ioredis";
 import type { ConnectionOptions } from "bullmq";
 import type {
+  ListRunsOptions,
+  ListRunsResult,
   RunInfo,
   RunStatus,
   StepInfo,
@@ -145,6 +147,43 @@ export class StateManager {
     if (step.status === "running") {
       await this.redis.hset(this.key("run", runId), "currentStep", step.name);
     }
+  }
+
+  // ─── List runs ─────────────────────────────────────────────────────
+
+  async listRuns(
+    workflowId: string,
+    options: ListRunsOptions = {}
+  ): Promise<ListRunsResult> {
+    const { limit = 50, order = "desc", cursor, status } = options;
+    const key = this.key("workflow", workflowId, "runs");
+    const fetchCount = limit + 1;
+
+    let runIds: string[];
+    if (order === "desc") {
+      const max = cursor ? String(cursor - 1) : "+inf";
+      runIds = await this.redis.zrevrangebyscore(
+        key, max, "-inf", "LIMIT", 0, fetchCount
+      );
+    } else {
+      const min = cursor ? String(cursor + 1) : "-inf";
+      runIds = await this.redis.zrangebyscore(
+        key, min, "+inf", "LIMIT", 0, fetchCount
+      );
+    }
+
+    const hasMore = runIds.length > limit;
+    if (hasMore) runIds = runIds.slice(0, limit);
+
+    const runs = (await Promise.all(runIds.map((id) => this.getRun(id))))
+      .filter((r): r is RunInfo => r !== null);
+
+    const filtered = status ? runs.filter((r) => r.status === status) : runs;
+
+    const lastRun = filtered[filtered.length - 1];
+    const nextCursor = hasMore && lastRun?.startedAt ? lastRun.startedAt : null;
+
+    return { runs: filtered, nextCursor };
   }
 
   // ─── Deduplication ───────────────────────────────────────────────────

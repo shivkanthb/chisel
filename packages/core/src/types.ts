@@ -252,6 +252,30 @@ export interface EngineEvents {
 
 export type EngineEventName = keyof EngineEvents;
 
+// ─── Workflow Info (for studio/dashboard) ────────────────────────────────────
+
+export interface WorkflowInfo {
+  id: string;
+  concurrency: number;
+  retries: number;
+  timeout?: number;
+  priority?: number;
+  rateLimit?: { max: number; duration: number };
+  hasInput: boolean;
+}
+
+export interface ListRunsOptions {
+  cursor?: number;
+  limit?: number;
+  order?: "asc" | "desc";
+  status?: RunStatus;
+}
+
+export interface ListRunsResult {
+  runs: RunInfo[];
+  nextCursor: number | null;
+}
+
 // ─── Internal ────────────────────────────────────────────────────────────────
 
 export interface ChiselJobData<TInput = unknown> {

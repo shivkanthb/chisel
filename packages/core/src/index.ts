@@ -25,6 +25,9 @@ export type {
   MiddlewareConfig,
   EngineEvents,
   EngineEventName,
+  WorkflowInfo,
+  ListRunsOptions,
+  ListRunsResult,
 } from "./types";
 
 /**
