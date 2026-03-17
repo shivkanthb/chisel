@@ -1,0 +1,64 @@
+import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
+import type { Engine, EngineEventName } from "chisel-engine";
+
+const ENGINE_EVENTS: EngineEventName[] = [
+  "workflow:start",
+  "workflow:complete",
+  "workflow:fail",
+  "step:start",
+  "step:complete",
+  "step:fail",
+  "step:retry",
+];
+
+export function createSseRoute(engine: Engine): Hono {
+  const app = new Hono();
+
+  app.get("/events", (c) => {
+    return streamSSE(c, async (stream) => {
+      const handlers = new Map<string, (payload: unknown) => void>();
+
+      for (const event of ENGINE_EVENTS) {
+        const handler = (payload: unknown) => {
+          stream
+            .writeSSE({
+              event,
+              data: JSON.stringify(payload, (_key, value) =>
+                value instanceof Error
+                  ? { message: value.message, name: value.name }
+                  : value
+              ),
+            })
+            .catch(() => {});
+        };
+        handlers.set(event, handler);
+        engine.on(event, handler as any);
+      }
+
+      // Heartbeat every 15 seconds
+      const heartbeat = setInterval(() => {
+        stream
+          .writeSSE({
+            event: "heartbeat",
+            data: JSON.stringify({ time: Date.now() }),
+          })
+          .catch(() => {});
+      }, 15_000);
+
+      // Keep the stream alive until client disconnects
+      try {
+        while (true) {
+          await stream.sleep(1000);
+        }
+      } finally {
+        clearInterval(heartbeat);
+        for (const [event, handler] of handlers) {
+          engine.off(event as EngineEventName, handler as any);
+        }
+      }
+    });
+  });
+
+  return app;
+}
