@@ -1,0 +1,65 @@
+---
+title: Quick start
+order: 3
+---
+
+## Quick start
+
+### 1. Define a workflow
+
+```ts
+import { defineWorkflow } from 'chisel-engine';
+
+const onboardUser = defineWorkflow<{ userId: string }>(
+  {
+    id: 'user/onboard',
+    retries: 3,
+    backoff: { type: 'exponential', delay: 1000 },
+  },
+  async (ctx) => {
+    const user = await ctx.step('fetch-user', async () => {
+      return db.users.findById(ctx.data.userId);
+    });
+
+    await ctx.step('send-welcome-email', async () => {
+      await email.send({ to: user.email, template: 'welcome' });
+    });
+
+    await ctx.step('provision-account', async () => {
+      await billing.createAccount(user.id);
+    });
+
+    return { onboarded: true };
+  }
+);
+```
+
+### 2. Create and start the engine
+
+```ts
+import { createEngine } from 'chisel-engine';
+
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+});
+
+engine.register(onboardUser);
+await engine.start();
+```
+
+### 3. Trigger the workflow
+
+```ts
+const { runId } = await engine.trigger(onboardUser, {
+  userId: 'usr_123',
+});
+```
+
+### 4. Check the run
+
+```ts
+const run = await engine.getRun(runId);
+console.log(run?.status, run?.progress);
+```
+
+Each `ctx.step()` call is checkpointed to Redis. If `provision-account` fails, Chisel can retry the workflow without re-running `fetch-user` or `send-welcome-email`.

@@ -1,0 +1,31 @@
+---
+title: Overview
+order: 1
+---
+
+import CodeTabs from '../../../components/CodeTabs.astro';
+
+## Overview
+
+Chisel is a workflow engine built on [BullMQ](https://docs.bullmq.io/) and Redis.
+
+It gives you a small, explicit API for durable background work: `defineWorkflow()`, `ctx.step()`, `ctx.parallel()`, `ctx.sleep()`, and `ctx.trigger()`.
+
+Each workflow run is processed as a BullMQ job, while step results and run metadata are checkpointed in Redis. When a run retries, completed steps return from the checkpoint cache instead of re-running.
+
+## Installation
+
+<CodeTabs
+  npm="npm i chisel-engine"
+  pnpm="pnpm add chisel-engine"
+  bun="bun add chisel-engine"
+/>
+
+## Why Chisel?
+
+- **Durable steps** — `ctx.step()` persists completed results so retries resume from the last good checkpoint
+- **Explicit concurrency** — `ctx.parallel()` uses normal JavaScript promises, while workflow execution still runs on BullMQ
+- **Retry control** — Configure retries, backoff, and timeouts at the workflow level or per step
+- **Type-safe input** — `defineWorkflow<TInput>()` plus optional schema validation via any object with `.parse()`
+- **Run visibility** — Inspect runs with `engine.getRun()`, `engine.listRuns()`, lifecycle events, or `chisel-studio`
+- **Plain server runtime** — No build plugins or code transforms; works in regular Node.js or Bun services

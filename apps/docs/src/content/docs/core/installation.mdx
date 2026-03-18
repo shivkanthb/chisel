@@ -1,0 +1,54 @@
+---
+title: Installation
+order: 2
+---
+
+import CodeTabs from '../../../components/CodeTabs.astro';
+
+## Installation
+
+<CodeTabs
+  npm="npm i chisel-engine"
+  pnpm="pnpm add chisel-engine"
+  bun="bun add chisel-engine"
+/>
+
+## Requirements
+
+- **Node.js** 18+ or Bun 1.0+
+- **Redis** 6.2+ (for BullMQ)
+
+## Redis Setup
+
+Chisel uses Redis for BullMQ queues, run state, step checkpoints, deduplication, and keyed concurrency locks. You need a running Redis instance before starting the engine:
+
+```bash
+# Docker
+docker run -d -p 6379:6379 redis
+
+# macOS
+brew install redis && brew services start redis
+```
+
+Create the engine with either host/port or a Redis URL:
+
+```ts
+import { createEngine } from 'chisel-engine';
+
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+  // or: connection: { url: 'redis://localhost:6379' },
+});
+```
+
+## Optional: Hono Adapter
+
+If you want the built-in REST API adapter for Hono, install `hono` as a peer dependency:
+
+<CodeTabs
+  npm="npm i hono"
+  pnpm="pnpm add hono"
+  bun="bun add hono"
+/>
+
+The Hono adapter is available at `chisel-engine/hono`.

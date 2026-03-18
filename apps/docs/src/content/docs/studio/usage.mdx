@@ -1,0 +1,33 @@
+---
+title: Usage
+order: 3
+---
+
+## Usage
+
+Add Chisel Studio to your existing engine setup:
+
+```ts
+import { createEngine } from 'chisel-engine';
+import { createStudio } from 'chisel-studio';
+
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+});
+
+engine.register(myWorkflow);
+await engine.start();
+
+const studio = createStudio(engine, {
+  port: 4040,
+  open: true,
+});
+
+await studio.start();
+```
+
+Then open [http://localhost:4040](http://localhost:4040) in your browser, or read `studio.url` from the returned server object.
+
+`createStudio()` only starts the dashboard server. You still need to register workflows and call `engine.start()` yourself.
+
+Today Studio is an embedded API, not a standalone CLI. There is no `npx chisel-studio` entrypoint in the published package, so you start it from application code with `createStudio(...).start()`.

@@ -1,0 +1,32 @@
+---
+import { getCollection, render } from 'astro:content';
+import DocsLayout from '../layouts/DocsLayout.astro';
+
+const docs = await getCollection('docs');
+
+// Sort: core first, then studio, each by order
+const sectionOrder = ['core', 'studio'];
+const sorted = docs.sort((a, b) => {
+  const sectionA = a.id.split('/')[0];
+  const sectionB = b.id.split('/')[0];
+  const sectionDiff = sectionOrder.indexOf(sectionA) - sectionOrder.indexOf(sectionB);
+  if (sectionDiff !== 0) return sectionDiff;
+  return (a.data.order ?? 99) - (b.data.order ?? 99);
+});
+
+// Pre-render all entries
+const rendered = await Promise.all(
+  sorted.map(async (entry) => ({
+    entry,
+    Content: (await render(entry)).Content,
+  }))
+);
+---
+
+<DocsLayout title="Chisel Docs">
+  {rendered.map(({ entry, Content }) => (
+    <section id={entry.id} class="docs-section">
+      <Content />
+    </section>
+  ))}
+</DocsLayout>

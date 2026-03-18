@@ -1,0 +1,41 @@
+---
+const sections = [
+  {
+    label: 'Core/',
+    items: [
+      { label: 'Overview', id: 'core/overview' },
+      { label: 'Installation', id: 'core/installation' },
+      { label: 'Quick start', id: 'core/quick-start' },
+      { label: 'Features', id: 'core/features' },
+      { label: 'Parallel Steps', id: 'core/parallel-steps' },
+    ],
+  },
+  {
+    label: 'Studio/',
+    items: [
+      { label: 'Overview', id: 'studio/overview' },
+      { label: 'Installation', id: 'studio/installation' },
+      { label: 'Usage', id: 'studio/usage' },
+      { label: 'Features', id: 'studio/features' },
+      { label: 'Options', id: 'studio/options' },
+    ],
+  },
+];
+---
+
+<nav class="sidebar-nav">
+  {sections.map((section) => (
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">{section.label}</div>
+      <ul>
+        {section.items.map((item) => (
+          <li>
+            <a href={`#${item.id}`} class="sidebar-link">
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</nav>

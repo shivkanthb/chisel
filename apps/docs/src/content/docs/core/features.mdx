@@ -1,0 +1,105 @@
+---
+title: Features
+order: 4
+---
+
+## Features
+
+### Durable steps
+
+Every `ctx.step()` call stores its result in Redis. On retry, completed steps return from the checkpoint cache instead of running again.
+
+```ts
+const data = await ctx.step('expensive-call', async () => {
+  return api.fetchData(); // Only runs once, even on retry
+});
+```
+
+### Step and workflow retries
+
+Workflow retries are handled by BullMQ. Step retries are handled inside `ctx.step()` and can be overridden per step.
+
+```ts
+await ctx.step(
+  'call-external-api',
+  async () => fetch('https://api.example.com/data').then((r) => r.json()),
+  {
+    retries: 5,
+    backoff: { type: 'fixed', delay: 1000 },
+    timeout: 30_000,
+  }
+);
+```
+
+### Sleep without blocking workers
+
+`ctx.sleep()` accepts a duration string or milliseconds. Short sleeps use an in-process timer; sleeps longer than 5 seconds move the BullMQ job into a delayed state so the worker can pick up other work.
+
+```ts
+await ctx.step('send-reminder', async () => {
+  await email.sendReminder(ctx.data.userId);
+});
+
+await ctx.sleep('24h');
+
+await ctx.step('check-response', async () => {
+  return db.responses.findLatest(ctx.data.userId);
+});
+```
+
+### Concurrency control
+
+`concurrency.limit` sets BullMQ worker concurrency for a workflow queue. If you also provide `concurrency.key`, Chisel acquires a Redis lock for that key and re-delays conflicting runs until the lock is released.
+
+Today that keyed lock is effectively one active run per key.
+
+```ts
+const workflow = defineWorkflow<{ accountId: string }>(
+  {
+    id: 'process-payment',
+    concurrency: {
+      limit: 10,
+      key: (data) => data.accountId,
+    },
+  },
+  async (ctx) => {
+    // ...
+  }
+);
+```
+
+### Child workflows and batches
+
+Start another workflow from inside a workflow with `ctx.trigger()`, or enqueue many runs at once with `engine.triggerBatch()`.
+
+```ts
+const parent = defineWorkflow({ id: 'parent' }, async (ctx) => {
+  const { runId } = await ctx.trigger(childWorkflow, { key: 'value' });
+  return { childRunId: runId };
+});
+
+await engine.triggerBatch([
+  { workflow: parent, data: {} },
+  { workflow: parent, data: {} },
+]);
+```
+
+### Events and run management
+
+Listen to workflow lifecycle events.
+
+```ts
+engine.on('workflow:complete', ({ workflowId, runId, result, duration }) => {
+  console.log(`${workflowId} completed in ${duration}ms`, { runId, result });
+});
+
+engine.on('step:retry', ({ workflowId, stepName, attempt, maxAttempts }) => {
+  console.log(`${workflowId}:${stepName} retry ${attempt}/${maxAttempts}`);
+});
+
+const run = await engine.getRun(runId);
+await engine.cancelRun(runId);
+await engine.retryRun(runId);
+```
+
+Available events are `workflow:start`, `workflow:complete`, `workflow:fail`, `step:start`, `step:complete`, `step:fail`, and `step:retry`.

@@ -1,0 +1,28 @@
+---
+title: Parallel Steps
+order: 5
+---
+
+## Parallel Steps
+
+Run multiple step promises concurrently with `ctx.parallel()`.
+
+```ts
+const [user, orders, preferences] = await ctx.parallel([
+  ctx.step('fetch-user', () => db.users.findById(ctx.data.userId)),
+  ctx.step('fetch-orders', () => db.orders.findByUser(ctx.data.userId)),
+  ctx.step('fetch-preferences', () => db.preferences.get(ctx.data.userId)),
+]);
+```
+
+### How it works
+
+- `ctx.parallel()` takes an array of promises, usually the promises returned by `ctx.step()`.
+- Each `ctx.step()` still uses the normal step executor, so step retries, timeouts, events, logging, and checkpoint persistence still apply.
+- Step names still need to be unique within the workflow, including inside parallel blocks.
+
+### Error handling
+
+Internally, `ctx.parallel()` waits with `Promise.allSettled()` and throws after all sibling promises have finished settling. That means one rejected branch will not leave unfinished sibling steps running after the workflow has already moved into retry handling.
+
+If any branch ultimately fails, the workflow fails from that point. On retry, any sibling steps that already completed are returned from the checkpoint cache instead of running again.

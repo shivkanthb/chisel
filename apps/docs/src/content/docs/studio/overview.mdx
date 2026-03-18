@@ -1,0 +1,18 @@
+---
+title: Overview
+order: 1
+---
+
+## Overview
+
+Chisel Studio is an embedded development dashboard for `chisel-engine`. It starts a local Hono server, serves the Studio UI, and exposes JSON and SSE endpoints backed by your existing engine instance.
+
+It is intended for local inspection and debugging: browse registered workflows, inspect recent runs, trigger new runs, and watch step-level activity as it happens.
+
+### Features at a glance
+
+- **Activity feed** — Live SSE stream of workflow and step events
+- **Workflow pages** — Sidebar of registered workflows with per-workflow run tables
+- **Run inspector** — Step trace, payload/output JSON, error messages, and progress
+- **Actions** — Trigger, cancel, and retry runs from the UI
+- **Embedded setup** — `createStudio(engine)` and start the returned server

@@ -1,0 +1,290 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/GeistVF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMonoVF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+/* ── Base ── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: #111;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 140px 24px 120px;
+  text-align: center;
+  transition: opacity 0.35s ease, max-height 0.4s ease, padding 0.4s ease;
+  overflow: hidden;
+  max-height: 500px;
+}
+
+.hero-title {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #000;
+}
+
+.hero-tagline {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #999;
+  font-weight: 400;
+}
+
+body.hero-hidden .hero {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+/* ── App container: centered sidebar + content ── */
+.app-container {
+  display: flex;
+  max-width: 860px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 180px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 24px 0 40px 0;
+}
+
+.sidebar-header {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, height 0.3s ease, margin 0.3s ease;
+  pointer-events: none;
+  margin-bottom: 0;
+}
+
+body.hero-hidden .sidebar-header {
+  height: auto;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  margin-bottom: 24px;
+}
+
+.sidebar-brand {
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-section-label {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.sidebar-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-section li {
+  margin: 0;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 3px 0 3px 12px;
+  font-size: 13px;
+  color: #888;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.sidebar-link:hover {
+  color: #000;
+}
+
+.sidebar-link.active {
+  color: #000;
+  font-weight: 500;
+}
+
+/* ── Content ── */
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 0 80px 48px;
+}
+
+/* Section spacing between docs sections */
+.docs-section {
+  scroll-margin-top: 32px;
+}
+
+.docs-section + .docs-section {
+  margin-top: 48px;
+  padding-top: 48px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* ── Prose: markdown content ── */
+.prose {
+  --tw-prose-body: #444;
+  --tw-prose-headings: #111;
+  --tw-prose-links: #111;
+  --tw-prose-code: #111;
+  --tw-prose-pre-bg: #fff;
+  --tw-prose-pre-code: #333;
+  font-family: var(--font-sans);
+  max-width: 600px;
+  font-size: 14px;
+}
+
+.prose h2 {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-top: 32px;
+  margin-bottom: 10px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Only the first h2 in each docs-section (the section title) is uppercase */
+.docs-section > h2:first-child {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0;
+}
+
+.prose h3 {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.prose p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #444;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.prose a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 400;
+}
+
+.prose a:hover {
+  color: #000;
+}
+
+.prose code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 1px 5px;
+  background: none;
+  border-radius: 3px;
+  font-weight: 400;
+}
+
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  background: #fff !important;
+  padding: 14px 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.prose pre code {
+  font-family: var(--font-mono);
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.prose ul,
+.prose ol {
+  font-size: 14px;
+  color: #444;
+  padding-left: 20px;
+}
+
+.prose li {
+  margin-top: 2px;
+  margin-bottom: 2px;
+  line-height: 1.6;
+}
+
+.prose strong {
+  font-weight: 500;
+  color: #111;
+}
+
+.prose table {
+  font-size: 13px;
+}
+
+.prose th {
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #666;
+}
+
+.prose td {
+  font-size: 13px;
+}

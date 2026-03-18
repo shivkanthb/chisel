@@ -1,0 +1,45 @@
+---
+title: Features
+order: 4
+---
+
+## Features
+
+### Activity feed
+
+The home screen shows the most recent workflow and step lifecycle events streamed from `/api/events` over Server-Sent Events.
+
+- `workflow:start`
+- `workflow:complete`
+- `workflow:fail`
+- `step:start`
+- `step:complete`
+- `step:fail`
+- `step:retry`
+
+The feed is filterable client-side and keeps the most recent 100 events in memory.
+
+### Workflow run lists
+
+The sidebar shows registered workflows from `engine.listWorkflows()`. Each workflow page includes:
+
+- Status filters for `running`, `completed`, `failed`, and `cancelled`
+- Run duration and step progress columns
+- Load-more pagination backed by `engine.listRuns()`
+- Workflow metadata badges for concurrency, retries, timeout, and rate limiting when configured
+
+### Run detail view
+
+Click into any run to see:
+
+- **Run metadata** — workflow ID, run ID, status, timestamps
+- **Payload and output** — JSON viewer for input data and completed results
+- **Step details** — per-step status, attempts, durations, and results
+- **Error details** — failure message plus the failed step name when available
+- **Live refresh for active runs** — active runs are re-fetched until they settle
+
+### Trigger, cancel, and retry
+
+You can trigger a workflow from its run list, cancel running runs, and retry failed runs directly from the dashboard.
+
+Studio also shows engine health in the sidebar and includes a light/dark/system theme toggle.

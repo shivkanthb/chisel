@@ -1,0 +1,23 @@
+{
+  "name": "chisel-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/mdx": "^4.2.0",
+    "@astrojs/react": "^5.0.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "agentation": "^2.3.3",
+    "astro": "^5.5.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.1.0"
+  }
+}

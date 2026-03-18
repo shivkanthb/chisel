@@ -1,0 +1,126 @@
+---
+import Sidebar from '../components/Sidebar.astro';
+import DevTools from '../components/DevTools.tsx';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="preload" href="/fonts/GeistVF.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/GeistMonoVF.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body class="min-h-screen bg-white">
+    <!-- Hero Section -->
+    <div id="hero" class="hero">
+      <h1 class="hero-title">Chisel</h1>
+      <p class="hero-tagline">Lightweight workflow engine with superior DX</p>
+    </div>
+
+    <!-- Main Layout: centered container with sidebar + content -->
+    <div id="app" class="app-container">
+      <aside id="sidebar" class="sidebar">
+        <div id="sidebar-header" class="sidebar-header">
+          <a href="#" class="sidebar-brand" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">Chisel</a>
+        </div>
+        <Sidebar />
+      </aside>
+
+      <main id="content" class="content">
+        <article class="prose">
+          <slot />
+        </article>
+      </main>
+    </div>
+
+    {import.meta.env.DEV && <DevTools client:only="react" />}
+
+    <script>
+      // Hero show/hide on scroll
+      const hero = document.getElementById('hero');
+      if (hero) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                document.body.classList.remove('hero-hidden');
+              } else {
+                document.body.classList.add('hero-hidden');
+              }
+            });
+          },
+          { threshold: 0.05 }
+        );
+        observer.observe(hero);
+      }
+
+      // Sidebar link clicks: collapse hero first, then scroll to target
+      document.querySelectorAll('.sidebar-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          const heroVisible = !document.body.classList.contains('hero-hidden');
+          if (heroVisible) {
+            e.preventDefault();
+            const targetId = link.getAttribute('href')?.slice(1);
+            if (!targetId) return;
+
+            // Collapse hero immediately
+            document.body.classList.add('hero-hidden');
+
+            // Wait for hero collapse transition, then scroll
+            setTimeout(() => {
+              const target = document.getElementById(targetId);
+              if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 400);
+          }
+        });
+      });
+
+      // Pad bottom of content so the last section can scroll into the active zone
+      const contentEl = document.getElementById('content');
+      const sections = document.querySelectorAll('.docs-section');
+      if (contentEl && sections.length > 0) {
+        const lastSection = sections[sections.length - 1] as HTMLElement;
+        const needed = window.innerHeight - lastSection.offsetHeight - 80;
+        if (needed > 0) {
+          contentEl.style.paddingBottom = `${needed}px`;
+        }
+      }
+
+      // Active sidebar link tracking based on scroll position
+      const navLinks = document.querySelectorAll('.sidebar-link');
+
+      if (sections.length > 0) {
+        const sectionObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const id = entry.target.id;
+                navLinks.forEach((link) => {
+                  const href = link.getAttribute('href');
+                  if (href === `#${id}`) {
+                    link.classList.add('active');
+                  } else {
+                    link.classList.remove('active');
+                  }
+                });
+              }
+            });
+          },
+          { rootMargin: '-10% 0px -70% 0px' }
+        );
+        sections.forEach((section) => sectionObserver.observe(section));
+      }
+    </script>
+  </body>
+</html>

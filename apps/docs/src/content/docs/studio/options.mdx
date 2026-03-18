@@ -1,0 +1,54 @@
+---
+title: Options
+order: 5
+---
+
+## Options
+
+### `createStudio(engine, options?)`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `port` | `number` | `4040` | Port used by the Studio server |
+| `host` | `string` | `"localhost"` | Hostname used by the Studio server |
+| `open` | `boolean` | `false` | Auto-open the Studio URL in the default browser after startup |
+
+### Example with options
+
+```ts
+const studio = createStudio(engine, {
+  port: 4040,
+  host: '127.0.0.1',
+  open: true,
+});
+
+await studio.start();
+console.log(studio.url); // http://127.0.0.1:4040
+```
+
+### Returned API
+
+`createStudio()` returns a `StudioServer`:
+
+```ts
+const studio = createStudio(engine);
+
+studio.url;
+await studio.start();
+await studio.stop();
+```
+
+### HTTP endpoints
+
+Studio serves both the UI and these API routes:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Engine health status |
+| `GET` | `/api/workflows` | Registered workflows and their metadata |
+| `GET` | `/api/workflows/:id/runs` | Runs for a workflow with pagination and status filters |
+| `GET` | `/api/runs/:runId` | Run detail including steps and progress |
+| `POST` | `/api/workflows/:id/trigger` | Trigger a workflow |
+| `POST` | `/api/runs/:runId/cancel` | Cancel a running run |
+| `POST` | `/api/runs/:runId/retry` | Retry a failed run |
+| `GET` | `/api/events` | SSE stream for activity updates |

@@ -1,0 +1,153 @@
+---
+interface Props {
+  npm: string;
+  pnpm: string;
+  bun: string;
+}
+
+const { npm, pnpm, bun } = Astro.props;
+const tabs = [
+  { id: 'npm', label: 'npm', command: npm },
+  { id: 'pnpm', label: 'pnpm', command: pnpm },
+  { id: 'bun', label: 'bun', command: bun },
+];
+---
+
+<div class="code-tabs not-prose" style="margin: 16px 0;">
+  <!-- Tabs row — no underline, just text -->
+  <div style="display: flex; gap: 16px; margin-bottom: 8px;">
+    {tabs.map((tab, i) => (
+      <button
+        type="button"
+        class="code-tab"
+        data-tab={tab.id}
+        data-active={i === 0 ? 'true' : 'false'}
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+
+  <!-- Code box — fully rounded, $ prefix -->
+  {tabs.map((tab, i) => (
+    <div
+      class:list={['code-panel', i !== 0 && 'hidden']}
+      data-panel={tab.id}
+    >
+      <div class="code-box">
+        <code><span class="code-dollar">$</span> {tab.command}</code>
+        <button
+          type="button"
+          class="copy-btn"
+          data-copy={tab.command}
+          aria-label="Copy to clipboard"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .hidden { display: none; }
+
+  .code-tab {
+    padding: 0;
+    font-size: 14px;
+    font-family: var(--font-sans);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #bbb;
+    transition: color 0.15s;
+  }
+
+  .code-tab:hover {
+    color: #666;
+  }
+
+  .code-tab[data-active="true"] {
+    color: #000;
+    font-weight: 500;
+  }
+
+  .code-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background: #fff;
+    padding: 14px 18px;
+  }
+
+  .code-box code {
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    color: #333;
+  }
+
+  .code-dollar {
+    color: #ccc;
+    margin-right: 2px;
+  }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ccc;
+    padding: 2px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    margin-left: 16px;
+  }
+
+  .copy-btn:hover {
+    color: #666;
+  }
+</style>
+
+<script>
+  document.querySelectorAll('.code-tabs').forEach((container) => {
+    const buttons = container.querySelectorAll('.code-tab');
+    const panels = container.querySelectorAll('.code-panel');
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tabId = (btn as HTMLElement).dataset.tab;
+
+        buttons.forEach((b) => {
+          (b as HTMLElement).dataset.active = 'false';
+        });
+        (btn as HTMLElement).dataset.active = 'true';
+
+        panels.forEach((p) => {
+          if ((p as HTMLElement).dataset.panel === tabId) {
+            p.classList.remove('hidden');
+          } else {
+            p.classList.add('hidden');
+          }
+        });
+      });
+    });
+  });
+
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = (btn as HTMLElement).dataset.copy || '';
+      await navigator.clipboard.writeText(text);
+
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const original = svg.innerHTML;
+        svg.innerHTML = '<polyline points="20 6 9 17 4 12" />';
+        setTimeout(() => { svg.innerHTML = original; }, 1500);
+      }
+    });
+  });
+</script>
