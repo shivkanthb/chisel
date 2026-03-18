@@ -1,0 +1,428 @@
+# Chisel Documentation
+
+> Chisel is a lightweight workflow engine built on BullMQ and Redis. It provides an Inngest-shaped DX (defineWorkflow / ctx.step()) with zero magic — no build plugins, no code transforms, no directives. Framework-agnostic: works anywhere JS runs.
+
+
+---
+
+## Core
+
+
+## Overview
+
+Chisel is a workflow engine built on [BullMQ](https://docs.bullmq.io/) and Redis.
+
+It gives you a small, explicit API for durable background work: `defineWorkflow()`, `ctx.step()`, `ctx.parallel()`, `ctx.sleep()`, and `ctx.trigger()`.
+
+Each workflow run is processed as a BullMQ job, while step results and run metadata are checkpointed in Redis. When a run retries, completed steps return from the checkpoint cache instead of re-running.
+
+## Installation
+
+```bash
+npm i chisel-engine
+# or
+pnpm add chisel-engine
+# or
+bun add chisel-engine
+```
+
+## Why Chisel?
+
+- **Durable steps** — `ctx.step()` persists completed results so retries resume from the last good checkpoint
+- **Explicit concurrency** — `ctx.parallel()` uses normal JavaScript promises, while workflow execution still runs on BullMQ
+- **Retry control** — Configure retries, backoff, and timeouts at the workflow level or per step
+- **Type-safe input** — `defineWorkflow<TInput>()` plus optional schema validation via any object with `.parse()`
+- **Run visibility** — Inspect runs with `engine.getRun()`, `engine.listRuns()`, lifecycle events, or `chisel-studio`
+- **Plain server runtime** — No build plugins or code transforms; works in regular Node.js or Bun services
+
+## Installation
+
+```bash
+npm i chisel-engine
+# or
+pnpm add chisel-engine
+# or
+bun add chisel-engine
+```
+
+## Requirements
+
+- **Node.js** 18+ or Bun 1.0+
+- **Redis** 6.2+ (for BullMQ)
+
+## Redis Setup
+
+Chisel uses Redis for BullMQ queues, run state, step checkpoints, deduplication, and keyed concurrency locks. You need a running Redis instance before starting the engine:
+
+```bash
+# Docker
+docker run -d -p 6379:6379 redis
+
+# macOS
+brew install redis && brew services start redis
+```
+
+Create the engine with either host/port or a Redis URL:
+
+```ts
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+  // or: connection: { url: 'redis://localhost:6379' },
+});
+```
+
+## Optional: Hono Adapter
+
+If you want the built-in REST API adapter for Hono, install `hono` as a peer dependency:
+
+```bash
+npm i hono
+# or
+pnpm add hono
+# or
+bun add hono
+```
+
+The Hono adapter is available at `chisel-engine/hono`.
+
+## Quick start
+
+### 1. Define a workflow
+
+```ts
+const onboardUser = defineWorkflow<{ userId: string }>(
+  {
+    id: 'user/onboard',
+    retries: 3,
+    backoff: { type: 'exponential', delay: 1000 },
+  },
+  async (ctx) => {
+    const user = await ctx.step('fetch-user', async () => {
+      return db.users.findById(ctx.data.userId);
+    });
+
+    await ctx.step('send-welcome-email', async () => {
+      await email.send({ to: user.email, template: 'welcome' });
+    });
+
+    await ctx.step('provision-account', async () => {
+      await billing.createAccount(user.id);
+    });
+
+    return { onboarded: true };
+  }
+);
+```
+
+### 2. Create and start the engine
+
+```ts
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+});
+
+engine.register(onboardUser);
+await engine.start();
+```
+
+### 3. Trigger the workflow
+
+```ts
+const { runId } = await engine.trigger(onboardUser, {
+  userId: 'usr_123',
+});
+```
+
+### 4. Check the run
+
+```ts
+const run = await engine.getRun(runId);
+console.log(run?.status, run?.progress);
+```
+
+Each `ctx.step()` call is checkpointed to Redis. If `provision-account` fails, Chisel can retry the workflow without re-running `fetch-user` or `send-welcome-email`.
+
+## Features
+
+### Durable steps
+
+Every `ctx.step()` call stores its result in Redis. On retry, completed steps return from the checkpoint cache instead of running again.
+
+```ts
+const data = await ctx.step('expensive-call', async () => {
+  return api.fetchData(); // Only runs once, even on retry
+});
+```
+
+### Step and workflow retries
+
+Workflow retries are handled by BullMQ. Step retries are handled inside `ctx.step()` and can be overridden per step.
+
+```ts
+await ctx.step(
+  'call-external-api',
+  async () => fetch('https://api.example.com/data').then((r) => r.json()),
+  {
+    retries: 5,
+    backoff: { type: 'fixed', delay: 1000 },
+    timeout: 30_000,
+  }
+);
+```
+
+### Sleep without blocking workers
+
+`ctx.sleep()` accepts a duration string or milliseconds. Short sleeps use an in-process timer; sleeps longer than 5 seconds move the BullMQ job into a delayed state so the worker can pick up other work.
+
+```ts
+await ctx.step('send-reminder', async () => {
+  await email.sendReminder(ctx.data.userId);
+});
+
+await ctx.sleep('24h');
+
+await ctx.step('check-response', async () => {
+  return db.responses.findLatest(ctx.data.userId);
+});
+```
+
+### Concurrency control
+
+`concurrency.limit` sets BullMQ worker concurrency for a workflow queue. If you also provide `concurrency.key`, Chisel acquires a Redis lock for that key and re-delays conflicting runs until the lock is released.
+
+Today that keyed lock is effectively one active run per key.
+
+```ts
+const workflow = defineWorkflow<{ accountId: string }>(
+  {
+    id: 'process-payment',
+    concurrency: {
+      limit: 10,
+      key: (data) => data.accountId,
+    },
+  },
+  async (ctx) => {
+    // ...
+  }
+);
+```
+
+### Child workflows and batches
+
+Start another workflow from inside a workflow with `ctx.trigger()`, or enqueue many runs at once with `engine.triggerBatch()`.
+
+```ts
+const parent = defineWorkflow({ id: 'parent' }, async (ctx) => {
+  const { runId } = await ctx.trigger(childWorkflow, { key: 'value' });
+  return { childRunId: runId };
+});
+
+await engine.triggerBatch([
+  { workflow: parent, data: {} },
+  { workflow: parent, data: {} },
+]);
+```
+
+### Events and run management
+
+Listen to workflow lifecycle events.
+
+```ts
+engine.on('workflow:complete', ({ workflowId, runId, result, duration }) => {
+  console.log(`${workflowId} completed in ${duration}ms`, { runId, result });
+});
+
+engine.on('step:retry', ({ workflowId, stepName, attempt, maxAttempts }) => {
+  console.log(`${workflowId}:${stepName} retry ${attempt}/${maxAttempts}`);
+});
+
+const run = await engine.getRun(runId);
+await engine.cancelRun(runId);
+await engine.retryRun(runId);
+```
+
+Available events are `workflow:start`, `workflow:complete`, `workflow:fail`, `step:start`, `step:complete`, `step:fail`, and `step:retry`.
+
+## Parallel Steps
+
+Run multiple step promises concurrently with `ctx.parallel()`.
+
+```ts
+const [user, orders, preferences] = await ctx.parallel([
+  ctx.step('fetch-user', () => db.users.findById(ctx.data.userId)),
+  ctx.step('fetch-orders', () => db.orders.findByUser(ctx.data.userId)),
+  ctx.step('fetch-preferences', () => db.preferences.get(ctx.data.userId)),
+]);
+```
+
+### How it works
+
+- `ctx.parallel()` takes an array of promises, usually the promises returned by `ctx.step()`.
+- Each `ctx.step()` still uses the normal step executor, so step retries, timeouts, events, logging, and checkpoint persistence still apply.
+- Step names still need to be unique within the workflow, including inside parallel blocks.
+
+### Error handling
+
+Internally, `ctx.parallel()` waits with `Promise.allSettled()` and throws after all sibling promises have finished settling. That means one rejected branch will not leave unfinished sibling steps running after the workflow has already moved into retry handling.
+
+If any branch ultimately fails, the workflow fails from that point. On retry, any sibling steps that already completed are returned from the checkpoint cache instead of running again.
+
+---
+
+## Studio
+
+
+## Overview
+
+Chisel Studio is an embedded development dashboard for `chisel-engine`. It starts a local Hono server, serves the Studio UI, and exposes JSON and SSE endpoints backed by your existing engine instance.
+
+It is intended for local inspection and debugging: browse registered workflows, inspect recent runs, trigger new runs, and watch step-level activity as it happens.
+
+### Features at a glance
+
+- **Activity feed** — Live SSE stream of workflow and step events
+- **Workflow pages** — Sidebar of registered workflows with per-workflow run tables
+- **Run inspector** — Step trace, payload/output JSON, error messages, and progress
+- **Actions** — Trigger, cancel, and retry runs from the UI
+- **Embedded setup** — `createStudio(engine)` and start the returned server
+
+## Installation
+
+```bash
+npm i chisel-studio
+# or
+pnpm add chisel-studio
+# or
+bun add chisel-studio
+```
+
+### Peer dependencies
+
+The published `chisel-studio` package declares `chisel-engine` and `hono` as peer dependencies, so it is safest to install them alongside Studio:
+
+```bash
+npm i chisel-engine hono
+# or
+pnpm add chisel-engine hono
+# or
+bun add chisel-engine hono
+```
+
+`chisel-studio` embeds its own UI bundle and starts a Hono server around your existing engine instance. It does not create or start the engine for you.
+
+## Usage
+
+Add Chisel Studio to your existing engine setup:
+
+```ts
+const engine = createEngine({
+  connection: { host: 'localhost', port: 6379 },
+});
+
+engine.register(myWorkflow);
+await engine.start();
+
+const studio = createStudio(engine, {
+  port: 4040,
+  open: true,
+});
+
+await studio.start();
+```
+
+Then open [http://localhost:4040](http://localhost:4040) in your browser, or read `studio.url` from the returned server object.
+
+`createStudio()` only starts the dashboard server. You still need to register workflows and call `engine.start()` yourself.
+
+Today Studio is an embedded API, not a standalone CLI. There is no `npx chisel-studio` entrypoint in the published package, so you start it from application code with `createStudio(...).start()`.
+
+## Features
+
+### Activity feed
+
+The home screen shows the most recent workflow and step lifecycle events streamed from `/api/events` over Server-Sent Events.
+
+- `workflow:start`
+- `workflow:complete`
+- `workflow:fail`
+- `step:start`
+- `step:complete`
+- `step:fail`
+- `step:retry`
+
+The feed is filterable client-side and keeps the most recent 100 events in memory.
+
+### Workflow run lists
+
+The sidebar shows registered workflows from `engine.listWorkflows()`. Each workflow page includes:
+
+- Status filters for `running`, `completed`, `failed`, and `cancelled`
+- Run duration and step progress columns
+- Load-more pagination backed by `engine.listRuns()`
+- Workflow metadata badges for concurrency, retries, timeout, and rate limiting when configured
+
+### Run detail view
+
+Click into any run to see:
+
+- **Run metadata** — workflow ID, run ID, status, timestamps
+- **Payload and output** — JSON viewer for input data and completed results
+- **Step details** — per-step status, attempts, durations, and results
+- **Error details** — failure message plus the failed step name when available
+- **Live refresh for active runs** — active runs are re-fetched until they settle
+
+### Trigger, cancel, and retry
+
+You can trigger a workflow from its run list, cancel running runs, and retry failed runs directly from the dashboard.
+
+Studio also shows engine health in the sidebar and includes a light/dark/system theme toggle.
+
+## Options
+
+### `createStudio(engine, options?)`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `port` | `number` | `4040` | Port used by the Studio server |
+| `host` | `string` | `"localhost"` | Hostname used by the Studio server |
+| `open` | `boolean` | `false` | Auto-open the Studio URL in the default browser after startup |
+
+### Example with options
+
+```ts
+const studio = createStudio(engine, {
+  port: 4040,
+  host: '127.0.0.1',
+  open: true,
+});
+
+await studio.start();
+console.log(studio.url); // http://127.0.0.1:4040
+```
+
+### Returned API
+
+`createStudio()` returns a `StudioServer`:
+
+```ts
+const studio = createStudio(engine);
+
+studio.url;
+await studio.start();
+await studio.stop();
+```
+
+### HTTP endpoints
+
+Studio serves both the UI and these API routes:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Engine health status |
+| `GET` | `/api/workflows` | Registered workflows and their metadata |
+| `GET` | `/api/workflows/:id/runs` | Runs for a workflow with pagination and status filters |
+| `GET` | `/api/runs/:runId` | Run detail including steps and progress |
+| `POST` | `/api/workflows/:id/trigger` | Trigger a workflow |
+| `POST` | `/api/runs/:runId/cancel` | Cancel a running run |
+| `POST` | `/api/runs/:runId/retry` | Retry a failed run |
+| `GET` | `/api/events` | SSE stream for activity updates |
