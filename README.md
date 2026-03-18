@@ -205,6 +205,38 @@ Endpoints:
 - `POST /runs/:runId/retry` — retry a failed run
 - `GET /health` — health check
 
+## Chisel Studio
+
+A real-time dashboard for monitoring and managing your workflows.
+
+```bash
+npm install chisel-studio
+```
+
+```ts
+import { createStudio } from "chisel-studio";
+
+const studio = createStudio(engine, { port: 4040 });
+await studio.start();
+// → Chisel Studio running at http://localhost:4040
+```
+
+Features:
+- **Real-time activity feed** — live SSE stream of workflow and step events
+- **Step trace visualization** — waterfall timeline showing step durations and status
+- **Workflow management** — trigger, retry, and cancel runs from the UI
+- **Light & dark mode** — system preference detection with manual toggle
+
+Options:
+
+```ts
+createStudio(engine, {
+  port: 4040,       // default: 4040
+  host: "localhost", // default: "localhost"
+  open: true,        // auto-open in browser (default: false)
+});
+```
+
 ## Configuration
 
 ```ts

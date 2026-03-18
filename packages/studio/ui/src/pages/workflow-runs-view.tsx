@@ -149,7 +149,7 @@ export function WorkflowRunsView() {
                   )
                 }
               >
-                <TableCell className="font-mono text-[13px] pl-5">
+                <TableCell className="font-mono text-[13px] pl-5" title={run.id}>
                   {truncateId(run.id)}
                 </TableCell>
                 <TableCell>
