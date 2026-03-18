@@ -6,3 +6,4 @@ dist/
 *.tsbuildinfo
 .turbo/
 CLAUDE.md
+studio_spec.md

@@ -96,7 +96,7 @@ export function RunDetailView() {
             </button>
             <ChevronRight className="h-3 w-3 text-muted-foreground" />
             <span className="font-mono text-foreground">
-              {truncateId(currentRun.id)}
+              {currentRun.id}
             </span>
           </div>
 
