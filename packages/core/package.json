@@ -1,6 +1,6 @@
 {
   "name": "chisel-engine",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lightweight workflow engine on BullMQ and Redis",
   "author": "shivkanthb <hi@shiv.cv>",
   "license": "MIT",
