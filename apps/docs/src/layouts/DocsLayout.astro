@@ -142,6 +142,7 @@ const { title } = Astro.props;
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
                 const id = entry.target.id;
+                history.replaceState(null, '', `#${id}`);
                 navLinks.forEach((link) => {
                   const href = link.getAttribute('href');
                   if (href === `#${id}`) {
