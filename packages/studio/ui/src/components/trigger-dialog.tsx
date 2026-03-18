@@ -52,7 +52,7 @@ export function TriggerDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-mono text-base">
+          <DialogTitle className="font-mono text-sm">
             Trigger: {workflowId}
           </DialogTitle>
         </DialogHeader>
@@ -64,12 +64,12 @@ export function TriggerDialog({
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="font-mono text-sm min-h-[140px] bg-accent/30"
+              className="font-mono text-[13px] min-h-[140px] bg-accent"
               placeholder="{}"
             />
           </div>
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/5 rounded-md px-3 py-2">
+            <p className="text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/5 rounded-md px-3 py-2">
               {error}
             </p>
           )}
@@ -83,7 +83,7 @@ export function TriggerDialog({
             </Button>
             <Button onClick={handleTrigger} disabled={loading} className="gap-1.5">
               <Play className="h-3.5 w-3.5" />
-              {loading ? "Triggering…" : "Trigger"}
+              {loading ? "Triggering..." : "Trigger"}
             </Button>
           </div>
         </div>

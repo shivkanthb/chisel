@@ -60,8 +60,8 @@ export function RunDetailView() {
 
   if (!currentRun) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        Loading run…
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+        Loading run...
       </div>
     );
   }
@@ -81,9 +81,9 @@ export function RunDetailView() {
     <div className="flex h-full">
       {/* Left: Trace panel */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="px-5 py-4 space-y-4">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-[13px]">
             <button
               className="text-muted-foreground hover:text-foreground transition-colors font-mono"
               onClick={() =>
@@ -103,13 +103,13 @@ export function RunDetailView() {
           {/* Run status bar */}
           <div className="flex items-center gap-2">
             <StatusBadge status={currentRun.status} />
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="font-mono text-[13px] text-muted-foreground">
               {formatDuration(duration)}
             </span>
           </div>
 
           {/* Trace visualization */}
-          <div className="rounded-md border bg-card p-3">
+          <div className="rounded-lg border p-4">
             <StepTrace
               steps={currentRun.steps}
               totalDuration={duration}
@@ -120,7 +120,7 @@ export function RunDetailView() {
       </ScrollArea>
 
       {/* Right: Detail panel */}
-      <div className="w-[300px] shrink-0 border-l bg-card/30">
+      <div className="w-[320px] shrink-0 border-l">
         <RunDetailPanel
           run={currentRun}
           onCancel={currentRun.status === "running" ? handleCancel : undefined}

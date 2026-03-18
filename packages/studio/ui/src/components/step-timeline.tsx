@@ -12,10 +12,10 @@ import type { StepInfo } from "@/lib/api";
 
 const stepIcons: Record<string, { icon: typeof Circle; color: string }> = {
   pending: { icon: Circle, color: "text-muted-foreground" },
-  running: { icon: Loader2, color: "text-blue-400" },
-  completed: { icon: CheckCircle2, color: "text-green-400" },
-  failed: { icon: XCircle, color: "text-red-400" },
-  retrying: { icon: RotateCcw, color: "text-orange-400" },
+  running: { icon: Loader2, color: "text-blue-500" },
+  completed: { icon: CheckCircle2, color: "text-emerald-500" },
+  failed: { icon: XCircle, color: "text-red-500" },
+  retrying: { icon: RotateCcw, color: "text-orange-500" },
   skipped: { icon: Minus, color: "text-muted-foreground" },
 };
 
@@ -27,7 +27,7 @@ interface StepTimelineProps {
 export function StepTimeline({ steps, className }: StepTimelineProps) {
   if (steps.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No steps executed yet.</p>
+      <p className="text-[13px] text-muted-foreground">No steps executed yet.</p>
     );
   }
 
@@ -56,12 +56,12 @@ export function StepTimeline({ steps, className }: StepTimelineProps) {
             {/* Step content */}
             <div className={cn("pb-4 flex-1 min-w-0", isLast && "pb-0")}>
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-sm font-medium truncate">
+                <span className="font-mono text-[13px] font-medium truncate">
                   {step.name}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                   {step.status === "running"
-                    ? "running…"
+                    ? "running..."
                     : formatDuration(step.duration)}
                 </span>
               </div>
@@ -73,7 +73,7 @@ export function StepTimeline({ steps, className }: StepTimelineProps) {
               )}
 
               {step.error && (
-                <p className="text-xs text-red-400 mt-1">
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                   Error: {step.error}
                 </p>
               )}

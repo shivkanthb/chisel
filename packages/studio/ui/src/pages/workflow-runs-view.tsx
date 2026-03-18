@@ -5,7 +5,6 @@ import { StatusBadge } from "@/components/status-badge";
 import { TriggerDialog } from "@/components/trigger-dialog";
 import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -58,149 +57,149 @@ export function WorkflowRunsView() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <h1 className="text-sm font-semibold font-mono">{decodedId}</h1>
-          <TriggerDialog
-            workflowId={decodedId}
-            onTriggered={() => {
-              fetchRuns(decodedId, {
-                status: statusFilter === "all" ? undefined : statusFilter,
-              });
-            }}
-          />
+      {/* Header bar */}
+      <div className="h-11 px-5 flex items-center justify-between border-b shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-medium font-mono">{decodedId}</h1>
+          {workflow && (
+            <div className="flex gap-3 text-xs text-muted-foreground items-center">
+              <div className="flex items-center gap-1" title="Concurrency">
+                <Gauge className="h-3 w-3" />
+                <span>{workflow.concurrency}</span>
+              </div>
+              <div className="flex items-center gap-1" title="Retries">
+                <Repeat className="h-3 w-3" />
+                <span>{workflow.retries}</span>
+              </div>
+              {workflow.timeout && (
+                <div className="flex items-center gap-1" title="Timeout">
+                  <Timer className="h-3 w-3" />
+                  <span>{formatDuration(workflow.timeout)}</span>
+                </div>
+              )}
+              {workflow.rateLimit && (
+                <div className="flex items-center gap-1" title="Rate limit">
+                  <Zap className="h-3 w-3" />
+                  <span>
+                    {workflow.rateLimit.max}/{formatDuration(workflow.rateLimit.duration)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
-        {/* Workflow config */}
-        {workflow && (
-          <div className="flex gap-4 text-xs text-muted-foreground flex-wrap items-center mt-2">
-            <div className="flex items-center gap-1">
-              <Gauge className="h-3 w-3" />
-              <span className="text-foreground font-medium">{workflow.concurrency}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Repeat className="h-3 w-3" />
-              <span className="text-foreground font-medium">{workflow.retries}</span>
-            </div>
-            {workflow.timeout && (
-              <div className="flex items-center gap-1">
-                <Timer className="h-3 w-3" />
-                <span className="text-foreground font-medium">
-                  {formatDuration(workflow.timeout)}
-                </span>
-              </div>
-            )}
-            {workflow.rateLimit && (
-              <div className="flex items-center gap-1">
-                <Zap className="h-3 w-3" />
-                <span className="text-foreground font-medium">
-                  {workflow.rateLimit.max}/{formatDuration(workflow.rateLimit.duration)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <TriggerDialog
+          workflowId={decodedId}
+          onTriggered={() => {
+            fetchRuns(decodedId, {
+              status: statusFilter === "all" ? undefined : statusFilter,
+            });
+          }}
+        />
       </div>
 
-      {/* Filters */}
-      <div className="px-4 pb-3 shrink-0">
-        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList>
-            {STATUS_TABS.map((tab) => (
-              <TabsTrigger key={tab} value={tab} className="capitalize text-xs">
-                {tab}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      {/* Filter bar */}
+      <div className="h-10 px-5 flex items-center gap-1 border-b shrink-0">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab}
+            className={`px-2.5 py-1 rounded-md text-[13px] capitalize transition-colors duration-100 ${
+              statusFilter === tab
+                ? "bg-accent text-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+            onClick={() => setStatusFilter(tab)}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto min-h-0 px-4 pb-4">
-          <Table>
-            <TableHeader>
+      <div className="flex-1 overflow-auto min-h-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="pl-5">Run</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Started</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Steps</TableHead>
+              <TableHead className="w-[80px] pr-5">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {currentRuns?.runs.length === 0 && (
               <TableRow>
-                <TableHead>Run</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Steps</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentRuns?.runs.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center text-muted-foreground py-12"
-                  >
-                    No runs found.
-                  </TableCell>
-                </TableRow>
-              )}
-              {currentRuns?.runs.map((run) => (
-                <TableRow
-                  key={run.id}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    navigate(
-                      `/workflows/${encodeURIComponent(decodedId)}/runs/${run.id}`
-                    )
-                  }
+                <TableCell
+                  colSpan={6}
+                  className="text-center text-muted-foreground py-16"
                 >
-                  <TableCell className="font-mono text-xs">
-                    {truncateId(run.id)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={run.status} />
-                  </TableCell>
-                  <TableCell>
-                    <TimeAgo timestamp={run.startedAt} />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {run.completedAt && run.startedAt
-                      ? formatDuration(run.completedAt - run.startedAt)
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {run.progress.completed}/{run.progress.total}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {run.status === "running" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 rounded-md"
-                          onClick={(e) => handleCancel(e, run.id)}
-                        >
-                          <XCircle className="h-3 w-3 text-red-400" />
-                        </Button>
-                      )}
-                      {run.status === "failed" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 rounded-md"
-                          onClick={(e) => handleRetry(e, run.id)}
-                        >
-                          <RotateCcw className="h-3 w-3 text-orange-400" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  No runs found.
+                </TableCell>
+              </TableRow>
+            )}
+            {currentRuns?.runs.map((run) => (
+              <TableRow
+                key={run.id}
+                className="cursor-pointer"
+                onClick={() =>
+                  navigate(
+                    `/workflows/${encodeURIComponent(decodedId)}/runs/${run.id}`
+                  )
+                }
+              >
+                <TableCell className="font-mono text-[13px] pl-5">
+                  {truncateId(run.id)}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={run.status} />
+                </TableCell>
+                <TableCell className="text-[13px]">
+                  <TimeAgo timestamp={run.startedAt} />
+                </TableCell>
+                <TableCell className="font-mono text-[13px] text-muted-foreground">
+                  {run.completedAt && run.startedAt
+                    ? formatDuration(run.completedAt - run.startedAt)
+                    : "—"}
+                </TableCell>
+                <TableCell className="font-mono text-[13px] text-muted-foreground">
+                  {run.progress.completed}/{run.progress.total}
+                </TableCell>
+                <TableCell className="pr-5">
+                  <div className="flex gap-1">
+                    {run.status === "running" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-md"
+                        onClick={(e) => handleCancel(e, run.id)}
+                      >
+                        <XCircle className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    )}
+                    {run.status === "failed" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-md"
+                        onClick={(e) => handleRetry(e, run.id)}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {currentRuns?.nextCursor && (
-          <div className="sticky bottom-0 flex justify-center py-3 pointer-events-none">
+          <div className="flex justify-center py-4">
             <Button
               variant="outline"
-              className="rounded-lg shadow-lg pointer-events-auto bg-background/80 backdrop-blur-sm"
+              size="sm"
               onClick={() => loadMoreRuns(decodedId)}
             >
               Load More

@@ -25,7 +25,7 @@ export function JsonViewer({
 
   if (!isComplex) {
     return (
-      <span className={cn("font-mono text-xs text-emerald-400", className)}>
+      <span className={cn("font-mono text-xs text-emerald-600 dark:text-emerald-400", className)}>
         {json}
       </span>
     );
@@ -33,26 +33,26 @@ export function JsonViewer({
 
   const preview =
     JSON.stringify(data).length > 60
-      ? JSON.stringify(data).slice(0, 60) + "…"
+      ? JSON.stringify(data).slice(0, 60) + "..."
       : JSON.stringify(data);
 
   return (
     <div className={cn("font-mono text-xs", className)}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors duration-150"
+        className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors duration-100"
       >
         {isOpen ? (
-          <ChevronDown className="h-2.5 w-2.5" />
+          <ChevronDown className="h-3 w-3" />
         ) : (
-          <ChevronRight className="h-2.5 w-2.5" />
+          <ChevronRight className="h-3 w-3" />
         )}
         {!isOpen && (
           <span className="text-muted-foreground">{preview}</span>
         )}
       </button>
       {isOpen && (
-        <pre className="mt-1.5 rounded-md bg-accent/30 p-2.5 text-foreground whitespace-pre-wrap break-all leading-relaxed text-xs">
+        <pre className="mt-1.5 rounded-md bg-accent p-2.5 text-foreground whitespace-pre-wrap break-all leading-relaxed text-xs">
           {json}
         </pre>
       )}

@@ -18,28 +18,24 @@ export function ActivityView() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 pt-4 pb-3 shrink-0 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-sm font-semibold">Recent Activity</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Live event stream from all workflows
-          </p>
-        </div>
+      {/* Header bar */}
+      <div className="h-11 px-5 flex items-center justify-between border-b shrink-0">
+        <h1 className="text-sm font-medium">Activity</h1>
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Filter events..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-7 w-48 rounded-md border bg-accent/30 pl-7 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="h-7 w-52 rounded-md border bg-background pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       </div>
 
       <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
-          <div className="px-4 pb-4">
+          <div className="px-5 py-3">
             <ActivityFeed events={filtered} />
           </div>
         </ScrollArea>

@@ -21,32 +21,32 @@ const statusConfig: Record<
   pending: {
     icon: Circle,
     color: "text-muted-foreground",
-    barColor: "bg-muted-foreground/20",
+    barColor: "bg-gray-200 dark:bg-gray-700",
   },
   running: {
     icon: Loader2,
-    color: "text-blue-400",
-    barColor: "bg-blue-500/60",
+    color: "text-blue-500",
+    barColor: "bg-blue-500/30 dark:bg-blue-500/40",
   },
   completed: {
     icon: CheckCircle2,
-    color: "text-emerald-400",
-    barColor: "bg-emerald-500/60",
+    color: "text-emerald-500",
+    barColor: "bg-emerald-500/30 dark:bg-emerald-500/40",
   },
   failed: {
     icon: XCircle,
-    color: "text-red-400",
-    barColor: "bg-red-500/60",
+    color: "text-red-500",
+    barColor: "bg-red-500/30 dark:bg-red-500/40",
   },
   retrying: {
     icon: RotateCcw,
-    color: "text-orange-400",
-    barColor: "bg-orange-500/60",
+    color: "text-orange-500",
+    barColor: "bg-orange-500/30 dark:bg-orange-500/40",
   },
   skipped: {
     icon: Minus,
     color: "text-muted-foreground",
-    barColor: "bg-muted-foreground/20",
+    barColor: "bg-gray-200 dark:bg-gray-700",
   },
 };
 
@@ -60,7 +60,7 @@ interface StepTraceProps {
 export function StepTrace({ steps, totalDuration, className, onRetryRun }: StepTraceProps) {
   if (steps.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground py-3">
+      <p className="text-[13px] text-muted-foreground py-4">
         No steps executed yet.
       </p>
     );
@@ -73,12 +73,12 @@ export function StepTrace({ steps, totalDuration, className, onRetryRun }: StepT
   return (
     <div className={cn("space-y-1", className)}>
       {/* Timeline header */}
-      <div className="flex items-center justify-between px-1.5 pb-1.5">
-        <span className="text-xs text-muted-foreground font-medium">
+      <div className="flex items-center justify-between pb-2">
+        <span className="text-[13px] text-muted-foreground font-medium">
           Steps ({steps.filter((s) => s.status === "completed").length}/
           {steps.length})
         </span>
-        <span className="text-xs text-muted-foreground font-mono">
+        <span className="text-[13px] text-muted-foreground font-mono">
           {formatDuration(totalDuration)}
         </span>
       </div>
@@ -127,33 +127,33 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
     <div className="animate-slide-in">
       <div
         className={cn(
-          "group flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors duration-150",
+          "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors duration-100",
           hasDetails && "cursor-pointer",
-          expanded ? "bg-accent/50" : "hover:bg-accent/30"
+          expanded ? "bg-accent" : "hover:bg-accent/50"
         )}
         onClick={() => hasDetails && setExpanded(!expanded)}
       >
         {/* Icon */}
         <div className={cn("shrink-0", config.color)}>
           <Icon
-            className={cn("h-3.5 w-3.5", isRunning && "animate-spin")}
+            className={cn("h-4 w-4", isRunning && "animate-spin")}
           />
         </div>
 
         {/* Step name */}
         <div className="shrink-0 w-32 min-w-[80px]">
-          <span className="font-mono text-xs truncate block">
+          <span className="font-mono text-[13px] truncate block">
             {step.name}
           </span>
         </div>
 
         {/* Trace bar */}
-        <div className="flex-1 h-6 bg-muted/30 rounded-md overflow-hidden relative">
+        <div className="flex-1 h-6 bg-accent rounded-md overflow-hidden relative">
           <div
             className={cn(
-              "trace-bar h-full flex items-center justify-end px-2.5",
+              "trace-bar h-full flex items-center justify-end px-2",
               config.barColor,
-              isRunning && "animate-shimmer bg-gradient-to-r from-blue-500/40 via-blue-400/60 to-blue-500/40 bg-[length:200%_100%]"
+              isRunning && "animate-shimmer bg-gradient-to-r from-blue-500/20 via-blue-400/40 to-blue-500/20 bg-[length:200%_100%]"
             )}
             style={
               {
@@ -163,7 +163,7 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
             }
           >
             {step.duration != null && step.duration > 0 && (
-              <span className="text-xs font-mono text-foreground/80 whitespace-nowrap">
+              <span className="text-xs font-mono text-foreground/70 whitespace-nowrap">
                 {formatDuration(step.duration)}
               </span>
             )}
@@ -173,7 +173,7 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
         {/* Duration label (right) */}
         <div className="shrink-0 w-14 text-right">
           <span className="font-mono text-xs text-muted-foreground">
-            {isRunning ? "…" : formatDuration(step.duration)}
+            {isRunning ? "..." : formatDuration(step.duration)}
           </span>
         </div>
 
@@ -181,9 +181,9 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
         {hasDetails && (
           <div className="shrink-0 text-muted-foreground">
             {expanded ? (
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-3.5 w-3.5" />
             ) : (
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3.5 w-3.5" />
             )}
           </div>
         )}
@@ -191,22 +191,22 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="ml-8 mr-3 mb-1.5 pl-3 border-l-2 border-border/50">
+        <div className="ml-8 mr-3 mb-1.5 pl-3 border-l-2 border-border">
           {(step.attempts ?? 0) > 1 && (
-            <p className="text-xs text-muted-foreground py-0.5">
+            <p className="text-[13px] text-muted-foreground py-0.5">
               Attempt {step.attempts}
             </p>
           )}
           {step.error && (
             <div className="py-1.5">
-              <p className="text-xs text-red-400 font-mono bg-red-500/5 rounded-md px-2.5 py-1.5">
+              <p className="text-[13px] text-red-600 dark:text-red-400 font-mono bg-red-500/5 rounded-md px-2.5 py-1.5">
                 {step.error}
               </p>
               {step.status === "failed" && onRetryRun && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-2 gap-1.5 text-orange-400 hover:text-orange-300 hover:border-orange-400/30"
+                  className="mt-2 gap-1.5 text-orange-600 dark:text-orange-400"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRetryRun();
@@ -240,16 +240,16 @@ function TimelineScale({ maxDuration }: { maxDuration: number }) {
   });
 
   return (
-    <div className="relative h-4 mt-0.5" style={{ marginLeft: "calc(0.875rem + 8.5rem)", marginRight: "4.75rem" }}>
-      <div className="absolute inset-x-0 top-0 h-px bg-border/50" />
+    <div className="relative h-4 mt-1" style={{ marginLeft: "calc(1rem + 8.5rem)", marginRight: "4.75rem" }}>
+      <div className="absolute inset-x-0 top-0 h-px bg-border" />
       {marks.map((mark, i) => (
         <div
           key={i}
           className="absolute top-0 flex flex-col items-center"
           style={{ left: `${mark.position}%` }}
         >
-          <div className="w-px h-1.5 bg-border/50" />
-          <span className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">
+          <div className="w-px h-1.5 bg-border" />
+          <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
             {mark.label}
           </span>
         </div>

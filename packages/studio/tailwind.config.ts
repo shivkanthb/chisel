@@ -39,18 +39,18 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        surface: {
-          1: "hsl(var(--surface-1))",
-          2: "hsl(var(--surface-2))",
-          3: "hsl(var(--surface-3))",
+        sidebar: {
+          bg: "hsl(var(--sidebar-bg))",
+          border: "hsl(var(--sidebar-border))",
+          hover: "hsl(var(--sidebar-hover))",
+          active: "hsl(var(--sidebar-active))",
         },
       },
       borderRadius: {
-        "2xl": "calc(var(--radius) + 4px)",
-        xl: "var(--radius)",
-        lg: "calc(var(--radius) - 2px)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 6px)",
+        xl: "calc(var(--radius) + 4px)",
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
         pulse: {
@@ -62,7 +62,7 @@ const config: Config = {
           "100%": { backgroundPosition: "200% 0" },
         },
         "slide-in": {
-          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "0%": { opacity: "0", transform: "translateY(2px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "trace-grow": {
@@ -73,12 +73,9 @@ const config: Config = {
       animation: {
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         shimmer: "shimmer 2s linear infinite",
-        "slide-in": "slide-in 0.3s ease-out",
-        "trace-grow": "trace-grow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards",
-      },
-      boxShadow: {
-        glow: "0 0 20px -5px hsl(var(--primary) / 0.15)",
-        "card-hover": "0 8px 30px -12px hsl(0 0% 0% / 0.4)",
+        "slide-in": "slide-in 0.15s ease-out",
+        "trace-grow":
+          "trace-grow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards",
       },
     },
   },
