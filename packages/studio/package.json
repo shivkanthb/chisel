@@ -1,0 +1,65 @@
+{
+  "name": "chisel-studio",
+  "version": "0.1.0",
+  "description": "Embedded dev UI for the Chisel workflow engine",
+  "author": "shivkanthb <hi@shiv.cv>",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build:ui": "vite build --config ui/vite.config.ts",
+    "build:server": "tsup",
+    "build": "bun run build:ui && bun run build:server",
+    "dev:ui": "vite dev --config ui/vite.config.ts",
+    "dev": "bun run demo.ts & vite dev --config ui/vite.config.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.0"
+  },
+  "peerDependencies": {
+    "chisel-engine": ">=0.1.0",
+    "hono": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^1.14.0",
+    "@radix-ui/react-dialog": "^1.1.0",
+    "@radix-ui/react-scroll-area": "^1.2.0",
+    "@radix-ui/react-separator": "^1.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "agentation": "^2.2.1",
+    "autoprefixer": "^10.4.0",
+    "chisel-engine": "workspace:*",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "hono": "^4.0.0",
+    "lucide-react": "^0.460.0",
+    "postcss": "^8.4.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^6.28.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^3.4.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "zustand": "^5.0.0"
+  },
+  "files": ["dist"]
+}
