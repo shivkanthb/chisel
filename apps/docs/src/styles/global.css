@@ -88,17 +88,16 @@ body.hero-hidden .hero {
 }
 
 .sidebar-header {
-  height: 0;
+  max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: opacity 0.3s ease, height 0.3s ease, margin 0.3s ease;
+  transition: opacity 0.4s ease, max-height 0.4s ease, margin 0.4s ease;
   pointer-events: none;
   margin-bottom: 0;
 }
 
 body.hero-hidden .sidebar-header {
-  height: auto;
-  overflow: visible;
+  max-height: 40px;
   opacity: 1;
   pointer-events: auto;
   margin-bottom: 24px;
@@ -360,6 +359,14 @@ body.hero-hidden .sidebar-header {
 
   .hero {
     padding: 60px 16px 40px;
+    transition: none;
+  }
+
+  body.hero-hidden .hero {
+    opacity: 1;
+    max-height: 500px;
+    padding: 60px 16px 40px;
+    pointer-events: auto;
   }
 
   .sidebar {

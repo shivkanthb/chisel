@@ -62,11 +62,14 @@ const { title } = Astro.props;
     {import.meta.env.DEV && <DevTools client:only="react" />}
 
     <script>
-      // Hero show/hide on scroll
+      const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+      // Hero show/hide on scroll (desktop only)
       const hero = document.getElementById('hero');
       if (hero) {
         const observer = new IntersectionObserver(
           (entries) => {
+            if (isMobile()) return;
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
                 document.body.classList.remove('hero-hidden');
@@ -80,9 +83,10 @@ const { title } = Astro.props;
         observer.observe(hero);
       }
 
-      // Sidebar link clicks: collapse hero first, then scroll to target
+      // Sidebar link clicks: collapse hero first, then scroll to target (desktop only)
       document.querySelectorAll('.sidebar-link').forEach((link) => {
         link.addEventListener('click', (e) => {
+          if (isMobile()) return;
           const heroVisible = !document.body.classList.contains('hero-hidden');
           if (heroVisible) {
             e.preventDefault();
