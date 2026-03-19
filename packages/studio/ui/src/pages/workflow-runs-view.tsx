@@ -6,6 +6,11 @@ import { TriggerDialog } from "@/components/trigger-dialog";
 import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,7 +28,7 @@ const STATUS_TABS = ["all", "running", "completed", "failed", "cancelled"] as co
 export function WorkflowRunsView() {
   const { workflowId } = useParams<{ workflowId: string }>();
   const navigate = useNavigate();
-  const { workflows, currentRuns, fetchRuns, loadMoreRuns } = useStore();
+  const { workflows, currentRuns, fetchRuns, loadMoreRuns, readOnly } = useStore();
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const decodedId = workflowId ? decodeURIComponent(workflowId) : "";
@@ -90,6 +95,7 @@ export function WorkflowRunsView() {
         </div>
         <TriggerDialog
           workflowId={decodedId}
+          readOnly={readOnly}
           onTriggered={() => {
             fetchRuns(decodedId, {
               status: statusFilter === "all" ? undefined : statusFilter,
@@ -169,24 +175,60 @@ export function WorkflowRunsView() {
                 <TableCell className="pr-5">
                   <div className="flex gap-1">
                     {run.status === "running" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 rounded-md"
-                        onClick={(e) => handleCancel(e, run.id)}
-                      >
-                        <XCircle className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
+                      readOnly ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-md"
+                                disabled
+                              >
+                                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Studio is in read-only mode</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-md"
+                          onClick={(e) => handleCancel(e, run.id)}
+                        >
+                          <XCircle className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      )
                     )}
                     {run.status === "failed" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 rounded-md"
-                        onClick={(e) => handleRetry(e, run.id)}
-                      >
-                        <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
-                      </Button>
+                      readOnly ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-md"
+                                disabled
+                              >
+                                <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Studio is in read-only mode</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-md"
+                          onClick={(e) => handleRetry(e, run.id)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+                        </Button>
+                      )
                     )}
                   </div>
                 </TableCell>

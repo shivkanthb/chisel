@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { api } from "./api";
 import { connectSSE } from "./sse";
-import type { HealthInfo, WorkflowInfo, RunInfo, ListRunsResult } from "./api";
+import type { HealthInfo, WorkflowInfo, RunInfo, ListRunsResult, StudioConfig } from "./api";
 import type { EngineEvent } from "./sse";
 
 const MAX_EVENTS = 100;
@@ -14,12 +14,14 @@ interface StudioState {
   currentWorkflowId: string | null;
   currentRun: RunInfo | null;
   liveEvents: EngineEvent[];
+  readOnly: boolean;
 
   // UI state
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
   // Actions
+  fetchConfig: () => Promise<void>;
   fetchHealth: () => Promise<void>;
   fetchWorkflows: () => Promise<void>;
   fetchRuns: (
@@ -39,8 +41,18 @@ export const useStore = create<StudioState>((set, get) => ({
   currentWorkflowId: null,
   currentRun: null,
   liveEvents: [],
+  readOnly: false,
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  fetchConfig: async () => {
+    try {
+      const config = await api.config();
+      set({ readOnly: config.readOnly });
+    } catch {
+      // Default to non-read-only
+    }
+  },
 
   fetchHealth: async () => {
     try {

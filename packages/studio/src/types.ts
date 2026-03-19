@@ -2,6 +2,7 @@ export interface StudioOptions {
   port?: number;
   host?: string;
   open?: boolean;
+  readOnly?: boolean;
 }
 
 export interface StudioServer {

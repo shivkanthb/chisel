@@ -4,6 +4,11 @@ import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { XCircle, RotateCcw, Copy } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import type { RunInfo } from "@/lib/api";
@@ -12,9 +17,10 @@ interface RunDetailPanelProps {
   run: RunInfo;
   onCancel?: () => void;
   onRetry?: () => void;
+  readOnly?: boolean;
 }
 
-export function RunDetailPanel({ run, onCancel, onRetry }: RunDetailPanelProps) {
+export function RunDetailPanel({ run, onCancel, onRetry, readOnly }: RunDetailPanelProps) {
   const duration =
     run.completedAt && run.startedAt
       ? run.completedAt - run.startedAt
@@ -131,26 +137,64 @@ export function RunDetailPanel({ run, onCancel, onRetry }: RunDetailPanelProps) 
               <section className="pt-1">
                 <div className="flex gap-2">
                   {run.status === "running" && onCancel && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-red-600 dark:text-red-400"
-                      onClick={onCancel}
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Cancel
-                    </Button>
+                    readOnly ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex-1" tabIndex={0}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-1.5 text-red-600 dark:text-red-400"
+                              disabled
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              Cancel
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Studio is in read-only mode</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1.5 text-red-600 dark:text-red-400"
+                        onClick={onCancel}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Cancel
+                      </Button>
+                    )
                   )}
                   {run.status === "failed" && onRetry && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-orange-600 dark:text-orange-400"
-                      onClick={onRetry}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Retry
-                    </Button>
+                    readOnly ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex-1" tabIndex={0}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-1.5 text-orange-600 dark:text-orange-400"
+                              disabled
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              Retry
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Studio is in read-only mode</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1.5 text-orange-600 dark:text-orange-400"
+                        onClick={onRetry}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Retry
+                      </Button>
+                    )
                   )}
                 </div>
               </section>

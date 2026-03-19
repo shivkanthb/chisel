@@ -8,17 +8,24 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { Play } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface TriggerDialogProps {
   workflowId: string;
   onTriggered?: (runId: string) => void;
+  readOnly?: boolean;
 }
 
 export function TriggerDialog({
   workflowId,
   onTriggered,
+  readOnly,
 }: TriggerDialogProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("{}");
@@ -41,6 +48,22 @@ export function TriggerDialog({
       setLoading(false);
     }
   };
+
+  if (readOnly) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0}>
+            <Button size="sm" className="gap-1.5" disabled>
+              <Play className="h-3.5 w-3.5" />
+              Trigger
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Studio is in read-only mode</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

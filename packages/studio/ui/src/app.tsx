@@ -10,11 +10,13 @@ import { useStore } from "@/lib/store";
 
 export function App() {
   const connectSSE = useStore((s) => s.connectSSE);
+  const fetchConfig = useStore((s) => s.fetchConfig);
   const fetchHealth = useStore((s) => s.fetchHealth);
   const fetchWorkflows = useStore((s) => s.fetchWorkflows);
 
   useEffect(() => {
     const disconnect = connectSSE();
+    fetchConfig();
     fetchHealth();
     fetchWorkflows();
     const interval = setInterval(fetchHealth, 30_000);
@@ -22,7 +24,7 @@ export function App() {
       disconnect();
       clearInterval(interval);
     };
-  }, [connectSSE, fetchHealth, fetchWorkflows]);
+  }, [connectSSE, fetchConfig, fetchHealth, fetchWorkflows]);
 
   return (
     <ThemeProvider>

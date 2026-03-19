@@ -20,7 +20,11 @@ function resolveUiDir(): string {
   return fromDist;
 }
 
-export function createStudioApp(engine: Engine): Hono {
+export function createStudioApp(
+  engine: Engine,
+  options?: { readOnly?: boolean }
+): Hono {
+  const readOnly = options?.readOnly ?? false;
   const app = new Hono();
 
   app.onError((err, c) => {
@@ -30,6 +34,19 @@ export function createStudioApp(engine: Engine): Hono {
 
   // Enable CORS for development
   app.use("*", cors());
+
+  // Config endpoint
+  app.get("/api/config", (c) => c.json({ readOnly }));
+
+  // Block mutations in read-only mode
+  if (readOnly) {
+    app.use("/api/*", async (c, next) => {
+      if (c.req.method === "POST") {
+        return c.json({ error: "Studio is in read-only mode" }, 403);
+      }
+      await next();
+    });
+  }
 
   // API routes
   app.route("/api", createApiRoutes(engine));

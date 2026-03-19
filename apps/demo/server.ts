@@ -194,7 +194,7 @@ await engine.start();
 
 // ─── Start Studio ────────────────────────────────────────────────────────────
 
-const studio = createStudio(engine, { port, host: "0.0.0.0" });
+const studio = createStudio(engine, { port, host: "0.0.0.0", readOnly: true });
 await studio.start();
 
 // ─── Seed demo data ──────────────────────────────────────────────────────────

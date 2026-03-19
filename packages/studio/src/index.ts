@@ -13,7 +13,7 @@ export function createStudio(
   const host = options.host ?? "localhost";
   const url = `http://${host}:${port}`;
 
-  const app = createStudioApp(engine);
+  const app = createStudioApp(engine, { readOnly: options.readOnly });
   let server: ReturnType<typeof serve> | null = null;
 
   return {

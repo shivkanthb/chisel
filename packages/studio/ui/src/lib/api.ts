@@ -74,7 +74,12 @@ async function post<T = unknown>(url: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+export interface StudioConfig {
+  readOnly: boolean;
+}
+
 export const api = {
+  config: () => get<StudioConfig>(`${BASE}/config`),
   health: () => get<HealthInfo>(`${BASE}/health`),
   workflows: () => get<WorkflowInfo[]>(`${BASE}/workflows`),
   runs: (

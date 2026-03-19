@@ -12,6 +12,11 @@ import {
 import { cn, formatDuration } from "@/lib/utils";
 import { JsonViewer } from "./json-viewer";
 import { Button } from "./ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "./ui/tooltip";
 import type { StepInfo } from "@/lib/api";
 
 const statusConfig: Record<
@@ -55,9 +60,10 @@ interface StepTraceProps {
   totalDuration?: number;
   className?: string;
   onRetryRun?: () => void;
+  readOnly?: boolean;
 }
 
-export function StepTrace({ steps, totalDuration, className, onRetryRun }: StepTraceProps) {
+export function StepTrace({ steps, totalDuration, className, onRetryRun, readOnly }: StepTraceProps) {
   if (steps.length === 0) {
     return (
       <p className="text-[13px] text-muted-foreground py-4">
@@ -91,6 +97,7 @@ export function StepTrace({ steps, totalDuration, className, onRetryRun }: StepT
             step={step}
             maxDuration={maxDuration}
             onRetryRun={onRetryRun}
+            readOnly={readOnly}
           />
         ))}
       </div>
@@ -105,9 +112,10 @@ interface StepTraceRowProps {
   step: StepInfo;
   maxDuration: number;
   onRetryRun?: () => void;
+  readOnly?: boolean;
 }
 
-function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
+function StepTraceRow({ step, maxDuration, onRetryRun, readOnly }: StepTraceRowProps) {
   const [expanded, setExpanded] = useState(false);
   const config = statusConfig[step.status] || statusConfig.pending;
   const Icon = config.icon;
@@ -203,18 +211,37 @@ function StepTraceRow({ step, maxDuration, onRetryRun }: StepTraceRowProps) {
                 {step.error}
               </p>
               {step.status === "failed" && onRetryRun && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 gap-1.5 text-orange-600 dark:text-orange-400"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRetryRun();
-                  }}
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Retry from this step
-                </Button>
+                readOnly ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 gap-1.5 text-orange-600 dark:text-orange-400"
+                          disabled
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Retry from this step
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Studio is in read-only mode</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 gap-1.5 text-orange-600 dark:text-orange-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRetryRun();
+                    }}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Retry from this step
+                  </Button>
+                )
               )}
             </div>
           )}

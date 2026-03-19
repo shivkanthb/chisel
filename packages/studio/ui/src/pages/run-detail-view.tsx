@@ -15,7 +15,7 @@ export function RunDetailView() {
     workflowId?: string;
   }>();
   const navigate = useNavigate();
-  const { currentRun, fetchRun } = useStore();
+  const { currentRun, fetchRun, readOnly } = useStore();
   const pollRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -114,6 +114,7 @@ export function RunDetailView() {
               steps={currentRun.steps}
               totalDuration={duration}
               onRetryRun={currentRun.status === "failed" ? handleRetry : undefined}
+              readOnly={readOnly}
             />
           </div>
         </div>
@@ -125,6 +126,7 @@ export function RunDetailView() {
           run={currentRun}
           onCancel={currentRun.status === "running" ? handleCancel : undefined}
           onRetry={currentRun.status === "failed" ? handleRetry : undefined}
+          readOnly={readOnly}
         />
       </div>
     </div>
