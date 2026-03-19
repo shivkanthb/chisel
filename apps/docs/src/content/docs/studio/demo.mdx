@@ -1,0 +1,21 @@
+---
+title: Demo
+order: 6
+---
+
+## Demo
+
+A live demo of Chisel Studio is available at **[studio-demo.usechisel.dev](https://studio-demo.usechisel.dev)**.
+
+The demo server runs 4 sample workflows:
+
+- **send-email** — Validates input, fetches a template, sends via SMTP, and logs delivery
+- **process-pdf** — Downloads a PDF, extracts text, and indexes content
+- **sync-users** — Fetches remote users, diffs local state, and applies changes (occasionally fails to demonstrate error handling)
+- **generate-report** — Queries a database, aggregates metrics, renders a PDF report, and sends a notification
+
+New runs are triggered periodically to keep the activity feed active.
+
+### Read-only mode
+
+The demo runs in **read-only mode** — trigger, cancel, and retry actions are disabled. In your own setup, Studio is fully interactive by default. See [Options](#studio/options) for the `readOnly` flag.
