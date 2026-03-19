@@ -9,6 +9,13 @@
         "typescript": "^5.5.0",
       },
     },
+    "apps/demo": {
+      "name": "chisel-demo",
+      "dependencies": {
+        "chisel-engine": "workspace:*",
+        "chisel-studio": "workspace:*",
+      },
+    },
     "apps/docs": {
       "name": "chisel-docs",
       "devDependencies": {
@@ -48,9 +55,10 @@
     },
     "packages/studio": {
       "name": "chisel-studio",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@hono/node-server": "^1.14.0",
+        "hono": "^4.0.0",
       },
       "devDependencies": {
         "@hono/node-server": "^1.14.0",
@@ -84,7 +92,6 @@
       },
       "peerDependencies": {
         "chisel-engine": ">=0.1.0",
-        "hono": ">=4.0.0",
       },
     },
   },
@@ -588,6 +595,8 @@
     "character-reference-invalid": ["character-reference-invalid@2.0.1", "", {}, "sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw=="],
 
     "check-error": ["check-error@2.1.3", "", {}, "sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA=="],
+
+    "chisel-demo": ["chisel-demo@workspace:apps/demo"],
 
     "chisel-docs": ["chisel-docs@workspace:apps/docs"],
 

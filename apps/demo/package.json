@@ -1,0 +1,12 @@
+{
+  "name": "chisel-demo",
+  "private": true,
+  "scripts": {
+    "start": "bun run server.ts",
+    "build": "echo 'no build needed'"
+  },
+  "dependencies": {
+    "chisel-engine": "workspace:*",
+    "chisel-studio": "workspace:*"
+  }
+}
