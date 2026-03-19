@@ -23,6 +23,11 @@ function resolveUiDir(): string {
 export function createStudioApp(engine: Engine): Hono {
   const app = new Hono();
 
+  app.onError((err, c) => {
+    console.error(`[studio] ${c.req.method} ${c.req.path} error:`, err);
+    return c.json({ error: err.message }, 500);
+  });
+
   // Enable CORS for development
   app.use("*", cors());
 
