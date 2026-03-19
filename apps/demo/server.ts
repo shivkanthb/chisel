@@ -3,7 +3,7 @@
  *
  * Env vars:
  *   REDIS_URL  — required
- *   PORT       — server port (default: 4040)
+ *   STUDIO_PORT — server port (default: 4040)
  */
 import { createEngine, defineWorkflow, FatalError } from "chisel-engine";
 import { createStudio } from "chisel-studio";
@@ -13,7 +13,7 @@ if (!process.env.REDIS_URL) {
   process.exit(1);
 }
 
-const port = Number(process.env.PORT) || 4040;
+const port = Number(process.env.STUDIO_PORT) || 4040;
 const connection = { url: process.env.REDIS_URL };
 
 const engine = createEngine({
