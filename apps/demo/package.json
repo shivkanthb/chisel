@@ -6,7 +6,7 @@
     "build": "echo 'no build needed'"
   },
   "dependencies": {
-    "chisel-engine": "^0.1.0",
+    "chisel-engine": "^0.2.0",
     "chisel-studio": "^0.1.2"
   }
 }
