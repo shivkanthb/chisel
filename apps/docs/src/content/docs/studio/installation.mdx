@@ -15,12 +15,14 @@ import CodeTabs from '../../../components/CodeTabs.astro';
 
 ### Peer dependencies
 
-The published `chisel-studio` package declares `chisel-engine` and `hono` as peer dependencies, so it is safest to install them alongside Studio:
+`chisel-engine` is a peer dependency — install it alongside Studio:
 
 <CodeTabs
-  npm="npm i chisel-engine hono"
-  pnpm="pnpm add chisel-engine hono"
-  bun="bun add chisel-engine hono"
+  npm="npm i chisel-engine"
+  pnpm="pnpm add chisel-engine"
+  bun="bun add chisel-engine"
 />
+
+`hono` is included as a direct dependency and will be installed automatically.
 
 `chisel-studio` embeds its own UI bundle and starts a Hono server around your existing engine instance. It does not create or start the engine for you.

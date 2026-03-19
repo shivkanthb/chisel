@@ -1,6 +1,6 @@
 {
   "name": "chisel-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embedded dev UI for the Chisel workflow engine",
   "author": "shivkanthb <hi@shiv.cv>",
   "license": "MIT",
@@ -25,11 +25,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.0"
+    "@hono/node-server": "^1.14.0",
+    "hono": "^4.0.0"
   },
   "peerDependencies": {
-    "chisel-engine": ">=0.1.0",
-    "hono": ">=4.0.0"
+    "chisel-engine": ">=0.1.0"
   },
   "devDependencies": {
     "@hono/node-server": "^1.14.0",

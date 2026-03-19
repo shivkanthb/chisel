@@ -20,7 +20,7 @@ pnpm add chisel-studio
 bun add chisel-studio
 ```
 
-`chisel-engine` and `hono` are peer dependencies.
+`chisel-engine` is a peer dependency. `hono` is included as a direct dependency and will be installed automatically.
 
 ## Usage
 
