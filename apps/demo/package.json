@@ -6,7 +6,7 @@
     "build": "echo 'no build needed'"
   },
   "dependencies": {
-    "chisel-engine": "workspace:*",
-    "chisel-studio": "workspace:*"
+    "chisel-engine": "^0.1.0",
+    "chisel-studio": "^0.1.1"
   }
 }
