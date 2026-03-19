@@ -210,7 +210,7 @@ await engine.start();
 
 // ─── Start Studio ────────────────────────────────────────────────────────────
 
-const studio = createStudio(engine, { port: 4040, readOnly: true });
+const studio = createStudio(engine, { port: 4040 });
 await studio.start();
 
 // ─── Seed demo data ──────────────────────────────────────────────────────────
