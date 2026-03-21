@@ -288,6 +288,33 @@ body.hero-hidden .sidebar-header {
   font-size: 13px;
 }
 
+/* ── Footer ── */
+.site-footer {
+  margin-top: 64px;
+  padding: 24px 0;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+  max-width: 600px;
+}
+
+.site-footer a {
+  color: #999;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.site-footer a:hover {
+  color: #111;
+}
+
+.footer-dot {
+  margin: 0 6px;
+}
+
 /* ── Mobile header & nav (hidden on desktop) ── */
 .mobile-header {
   display: none;
