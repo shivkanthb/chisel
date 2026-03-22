@@ -388,6 +388,7 @@ Studio also shows engine health in the sidebar and includes a light/dark/system 
 | `port` | `number` | `4040` | Port used by the Studio server |
 | `host` | `string` | `"localhost"` | Hostname used by the Studio server |
 | `open` | `boolean` | `false` | Auto-open the Studio URL in the default browser after startup |
+| `readOnly` | `boolean` | `false` | Disable all mutation actions (trigger, cancel, retry). Blocks POST requests server-side and disables action buttons in the UI. |
 
 ### Example with options
 

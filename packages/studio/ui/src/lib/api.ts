@@ -17,7 +17,7 @@ export interface WorkflowInfo {
 
 export interface StepInfo {
   name: string;
-  status: "pending" | "running" | "completed" | "failed" | "retrying" | "skipped";
+  status: "pending" | "running" | "completed" | "failed" | "retrying" | "skipped" | "sleep";
   result?: unknown;
   error?: string;
   duration?: number;

@@ -165,7 +165,8 @@ export type StepStatus =
   | "completed"
   | "failed"
   | "retrying"
-  | "skipped";
+  | "skipped"
+  | "sleep";
 
 export interface StepInfo {
   name: string;

@@ -480,6 +480,100 @@ describeWithRedis("Engine (integration)", () => {
     expect(completed.runs[0].status).toBe("completed");
   });
 
+  it("ctx.sleep() between steps completes after delay", async () => {
+    const engine = track(makeEngine());
+    const order: string[] = [];
+
+    const wf = defineWorkflow({ id: "test/sleep-between" }, async (ctx) => {
+      await ctx.step("before", async () => {
+        order.push("before");
+        return "a";
+      });
+      await ctx.sleep("6s"); // just above the 5s moveToDelayed threshold
+      await ctx.step("after", async () => {
+        order.push("after");
+        return "b";
+      });
+      return { order: [...order] };
+    });
+
+    engine.register(wf);
+    await engine.start();
+
+    const { runId } = await engine.trigger(wf, {});
+    await waitForRun(engine, runId, 20_000);
+
+    const run = await engine.getRun(runId);
+    expect(run!.status).toBe("completed");
+    expect(run!.result).toEqual({ order: ["before", "after"] });
+  }, 25_000);
+
+  it("ctx.sleep() inside a step throws a clear error", async () => {
+    const engine = track(makeEngine());
+
+    const wf = defineWorkflow({ id: "test/sleep-in-step" }, async (ctx) => {
+      await ctx.step("bad-step", async () => {
+        await ctx.sleep("6s");
+      });
+    });
+
+    engine.register(wf);
+    await engine.start();
+
+    const { runId } = await engine.trigger(wf, {});
+    await waitForRun(engine, runId, 15_000);
+
+    const run = await engine.getRun(runId);
+    expect(run!.status).toBe("failed");
+    expect(run!.error).toContain("ctx.sleep() cannot be used inside a step");
+  });
+
+  it("ctx.sleep() inside a parallel step throws even after sibling finishes", async () => {
+    const engine = track(makeEngine());
+
+    const wf = defineWorkflow({ id: "test/sleep-parallel" }, async (ctx) => {
+      await ctx.parallel([
+        ctx.step("fast", async () => "done"),
+        ctx.step("sleepy", async () => {
+          // Small delay so "fast" completes first
+          await new Promise((r) => setTimeout(r, 100));
+          await ctx.sleep("6s");
+        }),
+      ]);
+    });
+
+    engine.register(wf);
+    await engine.start();
+
+    const { runId } = await engine.trigger(wf, {});
+    await waitForRun(engine, runId, 15_000);
+
+    const run = await engine.getRun(runId);
+    expect(run!.status).toBe("failed");
+    expect(run!.error).toContain("ctx.sleep() cannot be used inside a step");
+  });
+
+  it("ctx.sleep() with short duration does not use moveToDelayed", async () => {
+    const engine = track(makeEngine());
+
+    const wf = defineWorkflow({ id: "test/sleep-short" }, async (ctx) => {
+      await ctx.step("before", async () => "a");
+      await ctx.sleep("1s"); // below 5s threshold — uses setTimeout
+      await ctx.step("after", async () => "b");
+      return "ok";
+    });
+
+    engine.register(wf);
+    await engine.start();
+
+    const { runId } = await engine.trigger(wf, {});
+    await waitForRun(engine, runId, 10_000);
+
+    const run = await engine.getRun(runId);
+    expect(run!.status).toBe("completed");
+    expect(run!.result).toBe("ok");
+  });
+
   it("registers workflows after engine.start()", async () => {
     const engine = track(makeEngine());
     const wf1 = defineWorkflow({ id: "test/before" }, async () => "before");

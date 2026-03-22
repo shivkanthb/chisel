@@ -6,6 +6,7 @@ import {
   Loader2,
   RotateCcw,
   Minus,
+  Moon,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -52,6 +53,11 @@ const statusConfig: Record<
     icon: Minus,
     color: "text-muted-foreground",
     barColor: "bg-gray-200 dark:bg-gray-700",
+  },
+  sleep: {
+    icon: Moon,
+    color: "text-purple-500",
+    barColor: "bg-purple-500/30 dark:bg-purple-500/40",
   },
 };
 

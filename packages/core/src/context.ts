@@ -1,5 +1,6 @@
 import type { Job } from "bullmq";
 import { createScopedLogger } from "./logger";
+import { FatalError } from "./errors";
 import { executeStep } from "./executor";
 import type { StateManager } from "./state";
 import type {
@@ -92,6 +93,12 @@ export function createWorkflowContext<TInput>(
   // Starts empty — cached steps from checkpoint replay are allowed on first call.
   const usedStepNames = new Set<string>();
 
+  // Counter for auto-naming sleeps so each gets a unique checkpoint key
+  let sleepIndex = 0;
+
+  // Track how many steps are currently executing (for nested/parallel guard)
+  let stepDepth = 0;
+
   const ctx: WorkflowContext<TInput> = {
     data: job.data.input as TInput,
     runId: meta.runId,
@@ -104,20 +111,25 @@ export function createWorkflowContext<TInput>(
       fn: () => Promise<T> | T,
       options?: StepOptions
     ): Promise<T> {
-      return executeStep<T>({
-        name,
-        fn,
-        stepOptions: options,
-        job,
-        meta,
-        state,
-        defaults,
-        logger,
-        signal,
-        middleware,
-        usedStepNames,
-        emitEvent,
-      });
+      stepDepth++;
+      try {
+        return await executeStep<T>({
+          name,
+          fn,
+          stepOptions: options,
+          job,
+          meta,
+          state,
+          defaults,
+          logger,
+          signal,
+          middleware,
+          usedStepNames,
+          emitEvent,
+        });
+      } finally {
+        stepDepth--;
+      }
     },
 
     async parallel<T extends readonly unknown[]>(
@@ -139,12 +151,53 @@ export function createWorkflowContext<TInput>(
     },
 
     async sleep(duration: string | number): Promise<void> {
+      if (stepDepth > 0) {
+        throw new FatalError(
+          "ctx.sleep() cannot be used inside a step. Use it between steps instead:\n\n" +
+          "  await ctx.step('work', () => doWork())\n" +
+          "  await ctx.sleep('30s')\n" +
+          "  await ctx.step('more-work', () => doMoreWork())"
+        );
+      }
+
       const ms = parseDuration(duration);
+      const sleepKey = `__chisel_sleep_${sleepIndex++}`;
+      const sleepLabel = formatSleepLabel(duration, ms);
+
+      // Check if this sleep was already completed (checkpoint replay)
+      const cached = meta.completedSteps[sleepKey];
+      if (cached && cached.status === "completed") {
+        logger.debug(`Sleep "${sleepKey}" already completed, skipping`);
+        // Update Redis state so the UI shows completed instead of sleeping
+        await state.updateStep(meta.runId, {
+          name: sleepLabel,
+          status: "completed",
+          duration: cached.duration as number,
+          startedAt: Date.now(),
+        });
+        return;
+      }
+
       logger.debug(`Sleeping for ${ms}ms`);
+      const startedAt = Date.now();
+
+      // Record sleep step in Redis for UI visibility
+      await state.updateStep(meta.runId, {
+        name: sleepLabel,
+        status: "sleep",
+        startedAt,
+      });
 
       // Use BullMQ's delayed job mechanism for longer sleeps
       if (ms > 5000 && job.moveToDelayed) {
-        await job.moveToDelayed(Date.now() + ms);
+        // Checkpoint before moving to delayed so on resume this sleep is skipped
+        meta.completedSteps[sleepKey] = { status: "completed", result: null, duration: ms };
+        await job.updateData({
+          ...job.data,
+          __chisel: { ...meta },
+        });
+
+        await job.moveToDelayed(Date.now() + ms, job.token);
         // After moveToDelayed, we need to throw a special error
         // to stop execution — the job will be re-picked up after the delay
         throw new SleepInterrupt(ms);
@@ -161,6 +214,21 @@ export function createWorkflowContext<TInput>(
           },
           { once: true }
         );
+      });
+
+      // Checkpoint the completed sleep so it's skipped on replay
+      meta.completedSteps[sleepKey] = { status: "completed", result: null, duration: ms };
+      await job.updateData({
+        ...job.data,
+        __chisel: { ...meta },
+      });
+
+      // Mark sleep as completed in Redis
+      await state.updateStep(meta.runId, {
+        name: sleepLabel,
+        status: "completed",
+        duration: ms,
+        startedAt,
       });
     },
 
@@ -189,6 +257,19 @@ export class SleepInterrupt extends Error {
     this.name = "SleepInterrupt";
     this.delayMs = delayMs;
   }
+}
+
+/**
+ * Formats a human-readable label for sleep steps shown in the UI.
+ * Prefers the original string duration if provided (e.g. "30s"), otherwise
+ * formats the millisecond value into a readable string.
+ */
+function formatSleepLabel(duration: string | number, ms: number): string {
+  if (typeof duration === "string") return `sleep ${duration}`;
+  if (ms < 1000) return `sleep ${ms}ms`;
+  if (ms < 60_000) return `sleep ${ms / 1000}s`;
+  if (ms < 3_600_000) return `sleep ${ms / 60_000}m`;
+  return `sleep ${ms / 3_600_000}h`;
 }
 
 export function isSleepInterrupt(err: unknown): err is SleepInterrupt {

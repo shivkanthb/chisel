@@ -1,4 +1,4 @@
-import { Queue, Worker, type ConnectionOptions, UnrecoverableError } from "bullmq";
+import { Queue, Worker, DelayedError, type ConnectionOptions, UnrecoverableError } from "bullmq";
 import { ConcurrencyManager } from "./concurrency";
 import { createWorkflowContext, generateRunId, isSleepInterrupt } from "./context";
 import { isFatalError, WorkflowTimeoutError } from "./errors";
@@ -22,14 +22,6 @@ import type {
 } from "./types";
 
 type EventHandler<T> = (payload: T) => void;
-
-/** Thrown internally to re-delay a job without consuming a retry attempt. */
-class ConcurrencyDelayError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ConcurrencyDelayError";
-  }
-}
 
 export class Engine {
   private config: EngineConfig;
@@ -545,10 +537,8 @@ export class Engine {
         );
         if (!acquired) {
           await this.state.updateRunStatus(runId, "queued");
-          await job.moveToDelayed(Date.now() + 1000);
-          throw new ConcurrencyDelayError(
-            `Concurrency lock not acquired for key "${concurrencyKey}", re-delaying`
-          );
+          await job.moveToDelayed(Date.now() + 1000, job.token);
+          throw new DelayedError();
         }
       }
 
@@ -596,16 +586,17 @@ export class Engine {
 
       return result;
     } catch (error) {
-      // Concurrency re-delay — not a real error, job already moved to delayed
-      if (error instanceof ConcurrencyDelayError) {
-        logger.debug("Concurrency lock miss, re-delaying");
-        return;
-      }
-
-      // Handle sleep interrupt (not a real error)
+      // Handle sleep interrupt — throw DelayedError so BullMQ's worker
+      // knows the job was moved to delayed and won't try to moveToFinished.
       if (isSleepInterrupt(error)) {
         logger.debug("Workflow sleeping", { delayMs: error.delayMs });
-        return; // Job has already been moved to delayed
+        throw new DelayedError();
+      }
+
+      // DelayedError (e.g. from concurrency re-delay) — rethrow as-is
+      // so BullMQ handles it correctly.
+      if (error instanceof DelayedError) {
+        throw error;
       }
 
       const duration = Date.now() - startedAt;

@@ -5,6 +5,7 @@ import {
   Loader2,
   RotateCcw,
   Minus,
+  Moon,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { JsonViewer } from "./json-viewer";
@@ -17,6 +18,7 @@ const stepIcons: Record<string, { icon: typeof Circle; color: string }> = {
   failed: { icon: XCircle, color: "text-red-500" },
   retrying: { icon: RotateCcw, color: "text-orange-500" },
   skipped: { icon: Minus, color: "text-muted-foreground" },
+  sleep: { icon: Moon, color: "text-purple-500" },
 };
 
 interface StepTimelineProps {
