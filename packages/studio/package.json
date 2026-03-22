@@ -1,6 +1,6 @@
 {
   "name": "chisel-studio",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Embedded dev UI for the Chisel workflow engine",
   "author": "shivkanthb <hi@shiv.cv>",
   "license": "MIT",

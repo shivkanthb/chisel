@@ -116,6 +116,7 @@ export async function executeStep<T>(opts: {
         status: "completed",
         result,
         duration,
+        startedAt,
       };
 
       // Update job data with checkpoint

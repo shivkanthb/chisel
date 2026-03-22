@@ -183,12 +183,59 @@ const generateReport = defineWorkflow<{ type: string; dateRange: string }>(
   }
 );
 
+// ─── Workflow 5: Drip Campaign (demonstrates ctx.sleep) ─────────────────────
+
+const dripCampaign = defineWorkflow<{ email: string; campaignId: string }>(
+  {
+    id: "drip-campaign",
+    concurrency: { limit: 10 },
+    retries: 2,
+    timeout: 300_000,
+  },
+  async (ctx) => {
+    await ctx.step("send-welcome-email", async () => {
+      await sleep(300);
+      return { sent: true, template: "welcome" };
+    });
+
+    // Wait before sending the next email
+    await ctx.sleep("10s");
+
+    await ctx.step("send-tips-email", async () => {
+      await sleep(300);
+      return { sent: true, template: "tips-and-tricks" };
+    });
+
+    // Wait before the final email
+    await ctx.sleep("15s");
+
+    const engagement = await ctx.step("check-engagement", async () => {
+      await sleep(200);
+      const opened = Math.random() > 0.3;
+      return { opened, clicks: opened ? Math.floor(Math.random() * 5) : 0 };
+    });
+
+    await ctx.step("send-final-email", async () => {
+      await sleep(300);
+      const template = engagement.opened ? "upsell" : "re-engage";
+      return { sent: true, template };
+    });
+
+    return {
+      email: ctx.data.email,
+      campaignId: ctx.data.campaignId,
+      engagement,
+    };
+  }
+);
+
 // ─── Register and start ──────────────────────────────────────────────────────
 
 engine.register(sendEmail);
 engine.register(processPdf);
 engine.register(syncUsers);
 engine.register(generateReport);
+engine.register(dripCampaign);
 
 await engine.start();
 
@@ -225,7 +272,12 @@ await engine.trigger(generateReport, {
   dateRange: "2026-02-24/2026-03-02",
 });
 
-console.log("Demo data seeded! Triggered 10 workflow runs.\n");
+await engine.trigger(dripCampaign, {
+  email: "newuser@example.com",
+  campaignId: "onboarding-q1",
+});
+
+console.log("Demo data seeded! Triggered 11 workflow runs.\n");
 console.log(`Studio running at ${studio.url}\n`);
 
 // Continuously trigger new runs every 10s
@@ -242,6 +294,11 @@ setInterval(async () => {
       }),
     () =>
       engine.trigger(syncUsers, { source: "https://api.okta.com/users" }),
+    () =>
+      engine.trigger(dripCampaign, {
+        email: `lead${Math.floor(Math.random() * 100)}@example.com`,
+        campaignId: "nurture",
+      }),
   ];
 
   const random = workflows[Math.floor(Math.random() * workflows.length)];

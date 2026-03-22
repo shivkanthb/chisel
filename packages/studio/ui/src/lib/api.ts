@@ -23,6 +23,7 @@ export interface StepInfo {
   duration?: number;
   attempts?: number;
   startedAt?: number;
+  order?: number;
 }
 
 export interface RunInfo {

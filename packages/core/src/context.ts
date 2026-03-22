@@ -173,7 +173,7 @@ export function createWorkflowContext<TInput>(
           name: sleepLabel,
           status: "completed",
           duration: cached.duration as number,
-          startedAt: Date.now(),
+          startedAt: cached.startedAt ?? Date.now(),
         });
         return;
       }
@@ -185,13 +185,19 @@ export function createWorkflowContext<TInput>(
       await state.updateStep(meta.runId, {
         name: sleepLabel,
         status: "sleep",
+        duration: ms,
         startedAt,
       });
 
       // Use BullMQ's delayed job mechanism for longer sleeps
       if (ms > 5000 && job.moveToDelayed) {
         // Checkpoint before moving to delayed so on resume this sleep is skipped
-        meta.completedSteps[sleepKey] = { status: "completed", result: null, duration: ms };
+        meta.completedSteps[sleepKey] = {
+          status: "completed",
+          result: null,
+          duration: ms,
+          startedAt,
+        };
         await job.updateData({
           ...job.data,
           __chisel: { ...meta },
@@ -217,7 +223,12 @@ export function createWorkflowContext<TInput>(
       });
 
       // Checkpoint the completed sleep so it's skipped on replay
-      meta.completedSteps[sleepKey] = { status: "completed", result: null, duration: ms };
+      meta.completedSteps[sleepKey] = {
+        status: "completed",
+        result: null,
+        duration: ms,
+        startedAt,
+      };
       await job.updateData({
         ...job.data,
         __chisel: { ...meta },
