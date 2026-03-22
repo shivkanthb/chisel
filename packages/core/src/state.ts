@@ -13,7 +13,7 @@ import type {
  *
  * Key structure:
  *   {prefix}:run:{runId}              → Hash: workflow metadata + status
- *   {prefix}:run:{runId}:steps        → Hash: step name → JSON { status, result, duration, attempts }
+ *   {prefix}:run:{runId}:steps        → Hash: step name → JSON { status, result, duration, attempts, order }
  *   {prefix}:workflow:{workflowId}:runs → Sorted set: recent runIds by timestamp
  *   {prefix}:dedup:{key}              → String with TTL: deduplication lock
  */
@@ -76,10 +76,19 @@ export class StateManager {
     if (!raw.id) return null;
 
     const stepsRaw = await this.redis.hgetall(this.key("run", runId, "steps"));
-    const steps: StepInfo[] = Object.entries(stepsRaw).map(([name, json]) => {
-      const parsed = JSON.parse(json);
-      return { name, ...parsed };
-    });
+    const steps: StepInfo[] = Object.entries(stepsRaw)
+      .map(([name, json]) => {
+        const parsed = JSON.parse(json);
+        return { name, ...parsed };
+      })
+      .sort((a, b) => {
+        if (a.order != null && b.order != null) {
+          return a.order - b.order;
+        }
+        if (a.order != null) return -1;
+        if (b.order != null) return 1;
+        return (a.startedAt ?? 0) - (b.startedAt ?? 0);
+      });
 
     const completedCount = steps.filter(
       (s) => s.status === "completed"
@@ -130,8 +139,22 @@ export class StateManager {
   // ─── Step state ──────────────────────────────────────────────────────
 
   async updateStep(runId: string, step: StepInfo): Promise<void> {
+    const runKey = this.key("run", runId);
+    const stepsKey = this.key("run", runId, "steps");
+
+    let order = step.order;
+    if (order == null) {
+      const existing = await this.redis.hget(stepsKey, step.name);
+      if (existing) {
+        order = (JSON.parse(existing) as StepInfo).order;
+      }
+    }
+    if (order == null) {
+      order = await this.redis.hincrby(runKey, "stepOrderCounter", 1);
+    }
+
     await this.redis.hset(
-      this.key("run", runId, "steps"),
+      stepsKey,
       step.name,
       JSON.stringify({
         status: step.status,
@@ -140,12 +163,13 @@ export class StateManager {
         duration: step.duration,
         attempts: step.attempts,
         startedAt: step.startedAt,
+        order,
       })
     );
 
     // Also update currentStep on the run
-    if (step.status === "running") {
-      await this.redis.hset(this.key("run", runId), "currentStep", step.name);
+    if (step.status === "running" || step.status === "sleep") {
+      await this.redis.hset(runKey, "currentStep", step.name);
     }
   }
 

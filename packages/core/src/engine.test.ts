@@ -508,6 +508,35 @@ describeWithRedis("Engine (integration)", () => {
     expect(run!.result).toEqual({ order: ["before", "after"] });
   }, 25_000);
 
+  it("preserves sleep order across multiple delayed resumes", async () => {
+    const engine = track(makeEngine());
+
+    const wf = defineWorkflow({ id: "test/sleep-order" }, async (ctx) => {
+      await ctx.step("before", async () => "a");
+      await ctx.sleep("6s");
+      await ctx.step("middle", async () => "b");
+      await ctx.sleep("7s");
+      await ctx.step("after", async () => "c");
+      return "ok";
+    });
+
+    engine.register(wf);
+    await engine.start();
+
+    const { runId } = await engine.trigger(wf, {});
+    await waitForRun(engine, runId, 20_000);
+
+    const run = await engine.getRun(runId);
+    expect(run!.status).toBe("completed");
+    expect(run!.steps.map((step) => step.name)).toEqual([
+      "before",
+      "sleep 6s",
+      "middle",
+      "sleep 7s",
+      "after",
+    ]);
+  }, 25_000);
+
   it("ctx.sleep() inside a step throws a clear error", async () => {
     const engine = track(makeEngine());
 

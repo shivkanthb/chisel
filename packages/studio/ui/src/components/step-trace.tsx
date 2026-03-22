@@ -64,12 +64,20 @@ const statusConfig: Record<
 interface StepTraceProps {
   steps: StepInfo[];
   totalDuration?: number;
+  runStartedAt?: number;
   className?: string;
   onRetryRun?: () => void;
   readOnly?: boolean;
 }
 
-export function StepTrace({ steps, totalDuration, className, onRetryRun, readOnly }: StepTraceProps) {
+export function StepTrace({
+  steps,
+  totalDuration,
+  runStartedAt,
+  className,
+  onRetryRun,
+  readOnly,
+}: StepTraceProps) {
   if (steps.length === 0) {
     return (
       <p className="text-[13px] text-muted-foreground py-4">
@@ -78,9 +86,21 @@ export function StepTrace({ steps, totalDuration, className, onRetryRun, readOnl
     );
   }
 
-  const maxDuration =
+  const timelineDuration =
     totalDuration ||
-    Math.max(...steps.map((s) => s.duration ?? 0), 1);
+    Math.max(
+      ...steps.map((step) => {
+        if (step.startedAt != null && runStartedAt != null) {
+          return step.startedAt - runStartedAt + (step.duration ?? 0);
+        }
+        return step.duration ?? 0;
+      }),
+      1
+    );
+
+  const compressTinySteps = !steps.some(
+    (step) => step.status === "running" || step.status === "sleep"
+  );
 
   return (
     <div className={cn("space-y-1", className)}>
@@ -101,7 +121,9 @@ export function StepTrace({ steps, totalDuration, className, onRetryRun, readOnl
           <StepTraceRow
             key={step.name}
             step={step}
-            maxDuration={maxDuration}
+            timelineDuration={timelineDuration}
+            runStartedAt={runStartedAt}
+            compressTinySteps={compressTinySteps}
             onRetryRun={onRetryRun}
             readOnly={readOnly}
           />
@@ -109,30 +131,62 @@ export function StepTrace({ steps, totalDuration, className, onRetryRun, readOnl
       </div>
 
       {/* Timeline scale */}
-      <TimelineScale maxDuration={maxDuration} />
+      <TimelineScale maxDuration={timelineDuration} />
     </div>
   );
 }
 
 interface StepTraceRowProps {
   step: StepInfo;
-  maxDuration: number;
+  timelineDuration: number;
+  runStartedAt?: number;
+  compressTinySteps?: boolean;
   onRetryRun?: () => void;
   readOnly?: boolean;
 }
 
-function StepTraceRow({ step, maxDuration, onRetryRun, readOnly }: StepTraceRowProps) {
+function StepTraceRow({
+  step,
+  timelineDuration,
+  runStartedAt,
+  compressTinySteps,
+  onRetryRun,
+  readOnly,
+}: StepTraceRowProps) {
   const [expanded, setExpanded] = useState(false);
   const config = statusConfig[step.status] || statusConfig.pending;
   const Icon = config.icon;
   const isRunning = step.status === "running";
+  const effectiveDuration =
+    step.duration ??
+    (step.status === "running" && step.startedAt != null
+      ? Date.now() - step.startedAt
+      : undefined);
+  const leftPercent =
+    step.startedAt != null && runStartedAt != null && timelineDuration > 0
+      ? Math.max(((step.startedAt - runStartedAt) / timelineDuration) * 100, 0)
+      : 0;
+  const actualWidthPercent =
+    effectiveDuration && timelineDuration > 0
+      ? (effectiveDuration / timelineDuration) * 100
+      : 0;
+  const showTinyMarker =
+    !!compressTinySteps &&
+    effectiveDuration != null &&
+    effectiveDuration > 0 &&
+    actualWidthPercent < 2;
+  const markerCenterPercent = Math.min(
+    leftPercent + actualWidthPercent / 2,
+    100
+  );
 
   const widthPercent =
-    step.duration && maxDuration > 0
-      ? Math.max((step.duration / maxDuration) * 100, 2)
+    effectiveDuration && timelineDuration > 0
+      ? Math.max(actualWidthPercent, 1)
       : step.status === "running"
         ? 45
         : 2;
+  const clampedWidthPercent = Math.min(widthPercent, Math.max(100 - leftPercent, 1));
 
   const hasDetails =
     step.result !== undefined || step.error || (step.attempts ?? 0) > 1;
@@ -165,20 +219,28 @@ function StepTraceRow({ step, maxDuration, onRetryRun, readOnly }: StepTraceRowP
         <div className="flex-1 h-6 bg-accent rounded-md overflow-hidden relative">
           <div
             className={cn(
-              "trace-bar h-full flex items-center justify-end px-2",
+              "trace-bar absolute inset-y-0 flex items-center px-2",
               config.barColor,
+              showTinyMarker && "inset-y-0.5 rounded-sm px-0",
               isRunning && "animate-shimmer bg-gradient-to-r from-blue-500/20 via-blue-400/40 to-blue-500/20 bg-[length:200%_100%]"
             )}
             style={
-              {
-                width: `${widthPercent}%`,
-                "--trace-width": `${widthPercent}%`,
-              } as React.CSSProperties
+              showTinyMarker
+                ? ({
+                    left: `calc(${markerCenterPercent}% - 1.5px)`,
+                    width: "3px",
+                    "--trace-width": "3px",
+                  } as React.CSSProperties)
+                : ({
+                    left: `${leftPercent}%`,
+                    width: `${clampedWidthPercent}%`,
+                    "--trace-width": `${clampedWidthPercent}%`,
+                  } as React.CSSProperties)
             }
           >
-            {step.duration != null && step.duration > 0 && (
-              <span className="text-xs font-mono text-foreground/70 whitespace-nowrap">
-                {formatDuration(step.duration)}
+            {effectiveDuration != null && effectiveDuration > 0 && !showTinyMarker && clampedWidthPercent > 12 && (
+              <span className="text-xs font-mono text-foreground/70 whitespace-nowrap ml-auto">
+                {formatDuration(effectiveDuration)}
               </span>
             )}
           </div>
@@ -187,7 +249,7 @@ function StepTraceRow({ step, maxDuration, onRetryRun, readOnly }: StepTraceRowP
         {/* Duration label (right) */}
         <div className="shrink-0 w-14 text-right">
           <span className="font-mono text-xs text-muted-foreground">
-            {isRunning ? "..." : formatDuration(step.duration)}
+            {isRunning && effectiveDuration == null ? "..." : formatDuration(effectiveDuration)}
           </span>
         </div>
 

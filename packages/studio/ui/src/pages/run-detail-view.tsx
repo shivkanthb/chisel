@@ -113,6 +113,7 @@ export function RunDetailView() {
             <StepTrace
               steps={currentRun.steps}
               totalDuration={duration}
+              runStartedAt={currentRun.startedAt}
               onRetryRun={currentRun.status === "failed" ? handleRetry : undefined}
               readOnly={readOnly}
             />

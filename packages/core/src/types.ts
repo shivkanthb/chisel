@@ -176,6 +176,7 @@ export interface StepInfo {
   duration?: number;
   attempts?: number;
   startedAt?: number;
+  order?: number;
 }
 
 export interface RunInfo {
@@ -289,7 +290,12 @@ export interface ChiselMeta {
   workflowId: string;
   completedSteps: Record<
     string,
-    { status: "completed"; result: unknown; duration: number }
+    {
+      status: "completed";
+      result: unknown;
+      duration: number;
+      startedAt?: number;
+    }
   >;
   parallelGroup: string | null;
   stepIndex: number;
