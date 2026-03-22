@@ -78,6 +78,12 @@ export interface StudioConfig {
   readOnly: boolean;
 }
 
+export interface BufferedEvent {
+  type: string;
+  data: Record<string, unknown>;
+  receivedAt: number;
+}
+
 export const api = {
   config: () => get<StudioConfig>(`${BASE}/config`),
   health: () => get<HealthInfo>(`${BASE}/health`),
@@ -91,4 +97,5 @@ export const api = {
   retry: (runId: string) => post(`${BASE}/runs/${runId}/retry`),
   trigger: (workflowId: string, data: unknown) =>
     post<{ runId: string }>(`${BASE}/workflows/${workflowId}/trigger`, data),
+  recentEvents: () => get<BufferedEvent[]>(`${BASE}/events/recent`),
 };

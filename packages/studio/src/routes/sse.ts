@@ -12,8 +12,42 @@ const ENGINE_EVENTS: EngineEventName[] = [
   "step:retry",
 ];
 
+const MAX_BUFFERED_EVENTS = 200;
+
+interface BufferedEvent {
+  type: string;
+  data: unknown;
+  receivedAt: number;
+}
+
 export function createSseRoute(engine: Engine): Hono {
   const app = new Hono();
+
+  // In-memory circular buffer of recent events
+  const eventBuffer: BufferedEvent[] = [];
+
+  function bufferEvent(type: string, payload: unknown) {
+    eventBuffer.unshift({ type, data: payload, receivedAt: Date.now() });
+    if (eventBuffer.length > MAX_BUFFERED_EVENTS) {
+      eventBuffer.length = MAX_BUFFERED_EVENTS;
+    }
+  }
+
+  // Subscribe to engine events for buffering (once, shared across all SSE clients)
+  for (const event of ENGINE_EVENTS) {
+    engine.on(event, ((payload: unknown) => {
+      bufferEvent(event, JSON.parse(JSON.stringify(payload, (_key, value) =>
+        value instanceof Error
+          ? { message: value.message, name: value.name }
+          : value
+      )));
+    }) as any);
+  }
+
+  // Return recent buffered events
+  app.get("/events/recent", (c) => {
+    return c.json(eventBuffer);
+  });
 
   app.get("/events", (c) => {
     return streamSSE(c, async (stream) => {

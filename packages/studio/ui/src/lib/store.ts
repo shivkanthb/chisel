@@ -127,6 +127,17 @@ export const useStore = create<StudioState>((set, get) => ({
   },
 
   connectSSE: () => {
+    // Seed with recent events from server (covers page reloads / reconnects)
+    api.recentEvents().then((events) => {
+      set((state) => {
+        // Merge: keep any live events that arrived after the buffered ones
+        const bufferedTs = events.length > 0 ? events[0].receivedAt : 0;
+        const newer = state.liveEvents.filter((e) => e.receivedAt > bufferedTs);
+        const merged = [...newer, ...events as EngineEvent[]].slice(0, MAX_EVENTS);
+        return { liveEvents: merged };
+      });
+    }).catch(() => {});
+
     const disconnect = connectSSE((event) => {
       get().pushEvent(event);
     });
