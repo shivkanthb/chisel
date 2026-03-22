@@ -98,8 +98,15 @@ export function StepTrace({
       1
     );
 
-  const compressTinySteps = !steps.some(
-    (step) => step.status === "running" || step.status === "sleep"
+  const isCompletedTrace = isSettledTrace(steps);
+  const laidOutSteps = layoutSteps(steps, {
+    isCompletedTrace,
+    runStartedAt,
+  });
+  const displayTimelineDuration = getDisplayTimelineDuration(
+    laidOutSteps,
+    timelineDuration,
+    isCompletedTrace
   );
 
   return (
@@ -111,19 +118,20 @@ export function StepTrace({
           {steps.length})
         </span>
         <span className="text-[13px] text-muted-foreground font-mono">
-          {formatDuration(totalDuration)}
+          {formatDuration(displayTimelineDuration)}
         </span>
       </div>
 
       {/* Steps */}
       <div className="space-y-0.5">
-        {steps.map((step) => (
+        {laidOutSteps.map(({ step, displayStart, displayDuration }) => (
           <StepTraceRow
             key={step.name}
             step={step}
-            timelineDuration={timelineDuration}
-            runStartedAt={runStartedAt}
-            compressTinySteps={compressTinySteps}
+            timelineDuration={displayTimelineDuration}
+            displayStart={displayStart}
+            displayDuration={displayDuration}
+            useTinyMarkers={isCompletedTrace}
             onRetryRun={onRetryRun}
             readOnly={readOnly}
           />
@@ -131,7 +139,7 @@ export function StepTrace({
       </div>
 
       {/* Timeline scale */}
-      <TimelineScale maxDuration={timelineDuration} />
+      <TimelineScale maxDuration={displayTimelineDuration} />
     </div>
   );
 }
@@ -139,8 +147,9 @@ export function StepTrace({
 interface StepTraceRowProps {
   step: StepInfo;
   timelineDuration: number;
-  runStartedAt?: number;
-  compressTinySteps?: boolean;
+  displayStart: number;
+  displayDuration?: number;
+  useTinyMarkers?: boolean;
   onRetryRun?: () => void;
   readOnly?: boolean;
 }
@@ -148,8 +157,9 @@ interface StepTraceRowProps {
 function StepTraceRow({
   step,
   timelineDuration,
-  runStartedAt,
-  compressTinySteps,
+  displayStart,
+  displayDuration,
+  useTinyMarkers,
   onRetryRun,
   readOnly,
 }: StepTraceRowProps) {
@@ -157,28 +167,20 @@ function StepTraceRow({
   const config = statusConfig[step.status] || statusConfig.pending;
   const Icon = config.icon;
   const isRunning = step.status === "running";
-  const effectiveDuration =
-    step.duration ??
-    (step.status === "running" && step.startedAt != null
-      ? Date.now() - step.startedAt
-      : undefined);
+  const effectiveDuration = displayDuration;
   const leftPercent =
-    step.startedAt != null && runStartedAt != null && timelineDuration > 0
-      ? Math.max(((step.startedAt - runStartedAt) / timelineDuration) * 100, 0)
+    timelineDuration > 0
+      ? Math.max((displayStart / timelineDuration) * 100, 0)
       : 0;
   const actualWidthPercent =
     effectiveDuration && timelineDuration > 0
       ? (effectiveDuration / timelineDuration) * 100
       : 0;
   const showTinyMarker =
-    !!compressTinySteps &&
+    !!useTinyMarkers &&
     effectiveDuration != null &&
     effectiveDuration > 0 &&
     actualWidthPercent < 2;
-  const markerCenterPercent = Math.min(
-    leftPercent + actualWidthPercent / 2,
-    100
-  );
 
   const widthPercent =
     effectiveDuration && timelineDuration > 0
@@ -227,7 +229,7 @@ function StepTraceRow({
             style={
               showTinyMarker
                 ? ({
-                    left: `calc(${markerCenterPercent}% - 1.5px)`,
+                    left: `${leftPercent}%`,
                     width: "3px",
                     "--trace-width": "3px",
                   } as React.CSSProperties)
@@ -254,15 +256,15 @@ function StepTraceRow({
         </div>
 
         {/* Expand chevron */}
-        {hasDetails && (
-          <div className="shrink-0 text-muted-foreground">
-            {expanded ? (
+        <div className="shrink-0 w-4 text-muted-foreground flex justify-center">
+          {hasDetails ? (
+            expanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
               <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </div>
-        )}
+            )
+          ) : null}
+        </div>
       </div>
 
       {/* Expanded details */}
@@ -325,14 +327,7 @@ function StepTraceRow({
 }
 
 function TimelineScale({ maxDuration }: { maxDuration: number }) {
-  const ticks = 5;
-  const marks = Array.from({ length: ticks + 1 }, (_, i) => {
-    const fraction = i / ticks;
-    return {
-      position: fraction * 100,
-      label: formatDuration(Math.round(maxDuration * fraction)),
-    };
-  });
+  const marks = getTimelineMarks(maxDuration);
 
   return (
     <div className="relative h-4 mt-1" style={{ marginLeft: "calc(1rem + 8.5rem)", marginRight: "4.75rem" }}>
@@ -351,4 +346,115 @@ function TimelineScale({ maxDuration }: { maxDuration: number }) {
       ))}
     </div>
   );
+}
+
+function isSettledTrace(steps: StepInfo[]) {
+  return !steps.some(
+    (step) =>
+      step.status === "running" ||
+      step.status === "sleep" ||
+      step.status === "pending" ||
+      step.status === "retrying"
+  );
+}
+
+function layoutSteps(
+  steps: StepInfo[],
+  opts: { isCompletedTrace: boolean; runStartedAt?: number }
+) {
+  const { isCompletedTrace, runStartedAt } = opts;
+  let cursor = 0;
+
+  return steps.map((step) => {
+    const displayDuration = getDisplayDuration(step);
+
+    if (isCompletedTrace) {
+      const displayStart = cursor;
+      cursor += displayDuration ?? 0;
+      return { step, displayStart, displayDuration };
+    }
+
+    const displayStart =
+      step.startedAt != null && runStartedAt != null
+        ? Math.max(step.startedAt - runStartedAt, 0)
+        : 0;
+
+    return { step, displayStart, displayDuration };
+  });
+}
+
+function getDisplayDuration(step: StepInfo) {
+  if (step.duration != null) return step.duration;
+  if (step.status === "running" && step.startedAt != null) {
+    return Date.now() - step.startedAt;
+  }
+  return undefined;
+}
+
+function getDisplayTimelineDuration(
+  laidOutSteps: Array<{ displayStart: number; displayDuration?: number }>,
+  timelineDuration: number,
+  isCompletedTrace: boolean
+) {
+  if (!isCompletedTrace) return timelineDuration;
+
+  const lastStep = laidOutSteps[laidOutSteps.length - 1];
+  const completedDuration =
+    (lastStep?.displayStart ?? 0) + (lastStep?.displayDuration ?? 0);
+
+  return Math.max(completedDuration, 1);
+}
+
+function getTimelineMarks(maxDuration: number) {
+  if (maxDuration <= 0) {
+    return [{ position: 0, label: "0ms" }];
+  }
+
+  const tickStep = getNiceTickStep(maxDuration);
+  const marks: Array<{ value: number; position: number; label: string }> = [];
+
+  for (let value = 0; value <= maxDuration; value += tickStep) {
+    marks.push({
+      value,
+      position: (value / maxDuration) * 100,
+      label: formatDuration(value),
+    });
+  }
+
+  const last = marks[marks.length - 1];
+  if (!last) {
+    marks.push({ value: maxDuration, position: 100, label: formatDuration(maxDuration) });
+  } else if (last.value !== maxDuration) {
+    const endMark = {
+      value: maxDuration,
+      position: 100,
+      label: formatDuration(maxDuration),
+    };
+
+    if (maxDuration - last.value < tickStep * 0.5) {
+      marks[marks.length - 1] = endMark;
+    } else {
+      marks.push(endMark);
+    }
+  }
+
+  return marks.map(({ position, label }) => ({ position, label }));
+}
+
+function getNiceTickStep(maxDuration: number) {
+  const targetTicks = 6;
+  const roughStep = maxDuration / targetTicks;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+
+  let niceNormalized = 10;
+  if (normalized <= 1) {
+    niceNormalized = 1;
+  } else if (normalized <= 2) {
+    niceNormalized = 2;
+  } else if (normalized <= 5) {
+    niceNormalized = 5;
+  }
+
+  return niceNormalized * magnitude;
 }
