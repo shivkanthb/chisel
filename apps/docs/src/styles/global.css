@@ -60,6 +60,23 @@ body {
   font-weight: 400;
 }
 
+.hero-github {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #999;
+  text-decoration: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-github:hover {
+  color: #000;
+  border-color: #ccc;
+}
+
 body.hero-hidden .hero {
   opacity: 0;
   max-height: 0;
@@ -151,11 +168,52 @@ body.hero-hidden .sidebar-header {
   font-weight: 500;
 }
 
+/* ── Floating GitHub button (appears on scroll) ── */
+.floating-github {
+  position: sticky;
+  top: 24px;
+  float: right;
+  z-index: 3;
+  font-size: 12px;
+  color: #999;
+  text-decoration: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.floating-github:hover {
+  color: #000;
+  border-color: #ccc;
+}
+
+body.hero-hidden .floating-github {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* ── Content ── */
 .content {
   flex: 1;
   min-width: 0;
   padding: 24px 0 80px 48px;
+  position: relative;
+}
+
+body.hero-hidden .content::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  display: block;
+  height: 64px;
+  margin-bottom: -64px;
+  background: linear-gradient(to bottom, #fff 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* Section spacing between docs sections */
@@ -397,6 +455,10 @@ body.hero-hidden .sidebar-header {
   }
 
   .sidebar {
+    display: none;
+  }
+
+  .floating-github {
     display: none;
   }
 
