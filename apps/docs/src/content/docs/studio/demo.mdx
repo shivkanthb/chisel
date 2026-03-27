@@ -7,12 +7,13 @@ order: 6
 
 A live demo of Chisel Studio is available at **<a href="https://studio-demo.usechisel.dev" target="_blank" rel="noopener noreferrer">studio-demo.usechisel.dev</a>**.
 
-The demo server runs 4 sample workflows:
+The demo server runs 5 sample workflows:
 
 - **send-email** — Validates input, fetches a template, sends via SMTP, and logs delivery
 - **process-pdf** — Downloads a PDF, extracts text, and indexes content
 - **sync-users** — Fetches remote users, diffs local state, and applies changes (occasionally fails to demonstrate error handling)
 - **generate-report** — Queries a database, aggregates metrics, renders a PDF report, and sends a notification
+- **drip-campaign** — Sends a welcome email, waits between steps using `ctx.sleep()`, checks engagement, and sends follow-up emails
 
 New runs are triggered periodically to keep the activity feed active.
 
