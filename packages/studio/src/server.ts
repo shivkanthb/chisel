@@ -1,11 +1,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { join } from "path";
+import { join, dirname } from "path";
 import { existsSync } from "fs";
+import { fileURLToPath } from "url";
 import type { Engine } from "chisel-engine";
 import { createApiRoutes } from "./routes/api";
 import { createSseRoute } from "./routes/sse";
 import { createStaticHandler } from "./static";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function resolveUiDir(): string {
   // When running from built output: __dirname is dist/, ui is dist/ui/
