@@ -14,6 +14,7 @@ Chisel gives you an Inngest-shaped developer experience — `defineWorkflow`, `c
 - **Input validation** — optional Zod schema validation on workflow input (Zod is not a dependency).
 - **Keyed concurrency** — per-key concurrency limits via Redis locks.
 - **Deduplication** — prevent duplicate triggers with configurable TTL.
+- **Bounded Redis retention** — terminal run state is pruned by age/count defaults so checkpoints do not grow without bound.
 - **Lifecycle events** — subscribe to `workflow:start`, `workflow:complete`, `step:fail`, etc.
 - **Middleware** — `beforeStep` / `afterStep` / `beforeWorkflow` hooks.
 - **Hono adapter** — optional REST API adapter for trigger, status, cancel, retry, and health.
@@ -255,6 +256,13 @@ const engine = createEngine({
   // Redis key prefix (default: "chisel")
   prefix: "myapp",
 
+  // Terminal run retention in Redis (defaults shown)
+  retention: {
+    completed: { age: 7 * 24 * 60 * 60, count: 10_000 },
+    failed: { age: 30 * 24 * 60 * 60, count: 10_000 },
+    cancelled: { age: 7 * 24 * 60 * 60, count: 10_000 },
+  },
+
   // Custom logger (default: console)
   logger: pino(),
 
@@ -265,6 +273,8 @@ const engine = createEngine({
   },
 });
 ```
+
+Set `retention: false` to disable pruning entirely, or set a status to `false` to keep that terminal state indefinitely.
 
 ## Workflow Options
 

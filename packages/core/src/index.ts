@@ -22,12 +22,15 @@ export type {
   Logger,
   BackoffConfig,
   RemovalPolicy,
+  RunRetentionPolicy,
+  RunRetentionConfig,
   MiddlewareConfig,
   EngineEvents,
   EngineEventName,
   WorkflowInfo,
   ListRunsOptions,
   ListRunsResult,
+  TerminalRunStatus,
 } from "./types";
 
 /**

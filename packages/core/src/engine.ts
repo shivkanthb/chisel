@@ -14,7 +14,10 @@ import type {
   ListRunsOptions,
   ListRunsResult,
   Logger,
+  RunRetentionConfig,
+  RunRetentionPolicy,
   RunInfo,
+  TerminalRunStatus,
   AnyTriggerBatchItem,
   TriggerOptions,
   Workflow,
@@ -22,6 +25,12 @@ import type {
 } from "./types";
 
 type EventHandler<T> = (payload: T) => void;
+
+const DEFAULT_RUN_RETENTION: Record<TerminalRunStatus, RunRetentionPolicy> = {
+  completed: { age: 7 * 24 * 60 * 60, count: 10_000 },
+  failed: { age: 30 * 24 * 60 * 60, count: 10_000 },
+  cancelled: { age: 7 * 24 * 60 * 60, count: 10_000 },
+};
 
 export class Engine {
   private config: EngineConfig;
@@ -64,7 +73,11 @@ export class Engine {
       };
     }
 
-    this.state = new StateManager(this.connection, this.prefix);
+    this.state = new StateManager(
+      this.connection,
+      this.prefix,
+      this.resolveRunRetention(config.retention)
+    );
     this.concurrency = new ConcurrencyManager(
       this.state.getRedis(),
       this.prefix
@@ -391,9 +404,7 @@ export class Engine {
       }
     }
 
-    await this.state.updateRunStatus(runId, "cancelled", {
-      completedAt: String(Date.now()),
-    });
+    await this.state.setRunCancelled(runId, run.workflowId);
   }
 
   /**
@@ -413,6 +424,7 @@ export class Engine {
       const job = await queue.getJob(runId);
       if (job) {
         await job.retry("failed");
+        await this.state.clearTerminalRunIndexes(runId, run.workflowId);
         await this.state.updateRunStatus(runId, "queued");
       }
     }
@@ -573,7 +585,7 @@ export class Engine {
       const duration = Date.now() - startedAt;
 
       // Mark run as completed
-      await this.state.setRunResult(runId, result);
+      await this.state.setRunResult(runId, workflow.id, result);
 
       this.emit("workflow:complete", {
         workflowId: workflow.id,
@@ -607,7 +619,7 @@ export class Engine {
       // Workflow-level timeout: non-retryable, fail immediately
       if (timedOut) {
         const err = new WorkflowTimeoutError(workflow.id, workflowTimeout!);
-        await this.state.setRunError(runId, err.message, failedStep);
+        await this.state.setRunError(runId, workflow.id, err.message, failedStep);
 
         this.emit("workflow:fail", {
           workflowId: workflow.id,
@@ -625,6 +637,7 @@ export class Engine {
       if (isFatalError(error)) {
         await this.state.setRunError(
           runId,
+          workflow.id,
           error instanceof Error ? error.message : String(error),
           failedStep
         );
@@ -654,6 +667,7 @@ export class Engine {
       if (isLastAttempt) {
         await this.state.setRunError(
           runId,
+          workflow.id,
           error instanceof Error ? error.message : String(error),
           failedStep
         );
@@ -695,6 +709,34 @@ export class Engine {
       retries: workflow?.config.retries ?? this.config.defaults?.retries ?? 3,
       backoff: workflow?.config.backoff ?? this.config.defaults?.backoff ?? { type: "exponential", delay: 2000 },
     };
+  }
+
+  private resolveRunRetention(
+    retention?: RunRetentionConfig | false
+  ): Record<TerminalRunStatus, RunRetentionPolicy | false> {
+    if (retention === false) {
+      return {
+        completed: false,
+        failed: false,
+        cancelled: false,
+      };
+    }
+
+    const merged = {} as Record<TerminalRunStatus, RunRetentionPolicy | false>;
+    for (const status of ["completed", "failed", "cancelled"] as const) {
+      const override = retention?.[status];
+      if (override === false) {
+        merged[status] = false;
+        continue;
+      }
+
+      merged[status] = {
+        ...DEFAULT_RUN_RETENTION[status],
+        ...(override ?? {}),
+      };
+    }
+
+    return merged;
   }
 
   private queueName(workflowId: string): string {

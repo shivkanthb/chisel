@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { createEngine, defineWorkflow, FatalError } from "./index";
 import type { Engine } from "./engine";
+import type { EngineConfig } from "./types";
 
 /**
  * Integration tests — require Redis.
@@ -17,7 +18,7 @@ function getRedisConnection() {
 }
 
 let engineCounter = 0;
-function makeEngine(): Engine {
+function makeEngine(overrides: Partial<EngineConfig> = {}): Engine {
   engineCounter++;
   return createEngine({
     connection: getRedisConnection() as any,
@@ -29,6 +30,7 @@ function makeEngine(): Engine {
       removeOnComplete: { age: 60, count: 100 },
       removeOnFail: { age: 60, count: 100 },
     },
+    ...overrides,
   });
 }
 
@@ -478,6 +480,79 @@ describeWithRedis("Engine (integration)", () => {
     const completed = await engine.listRuns("test/list-filter", { status: "completed" });
     expect(completed.runs.length).toBe(1);
     expect(completed.runs[0].status).toBe("completed");
+  });
+
+  it("prunes completed runs using retention count", async () => {
+    const engine = track(makeEngine({
+      retention: {
+        completed: { count: 1 },
+        failed: false,
+        cancelled: false,
+      },
+    }));
+
+    const wf = defineWorkflow<{ n: number }>(
+      { id: "test/retention-completed" },
+      async (ctx) => ({ n: ctx.data.n })
+    );
+    engine.register(wf);
+    await engine.start();
+
+    const { runId: run1 } = await engine.trigger(wf, { n: 1 });
+    await waitForRun(engine, run1, 10_000);
+
+    const { runId: run2 } = await engine.trigger(wf, { n: 2 });
+    await waitForRun(engine, run2, 10_000);
+
+    expect(await engine.getRun(run1)).toBeNull();
+
+    const retainedRun = await engine.getRun(run2);
+    expect(retainedRun?.status).toBe("completed");
+    expect(retainedRun?.result).toEqual({ n: 2 });
+
+    const runs = await engine.listRuns("test/retention-completed");
+    expect(runs.runs.map((run) => run.id)).toEqual([run2]);
+  });
+
+  it("retrying a failed run removes it from failed retention indexes", async () => {
+    const engine = track(makeEngine({
+      retention: {
+        completed: false,
+        failed: { count: 1 },
+        cancelled: false,
+      },
+    }));
+
+    let shouldFail = true;
+    const wf = defineWorkflow(
+      { id: "test/retention-retry" },
+      async () => {
+        if (shouldFail) {
+          throw new FatalError("boom");
+        }
+        return "ok";
+      }
+    );
+    engine.register(wf);
+    await engine.start();
+
+    const { runId: run1 } = await engine.trigger(wf, {});
+    await waitForRun(engine, run1, 10_000);
+    expect((await engine.getRun(run1))?.status).toBe("failed");
+
+    shouldFail = false;
+    await engine.retryRun(run1);
+    await waitForRun(engine, run1, 10_000);
+    expect((await engine.getRun(run1))?.status).toBe("completed");
+
+    shouldFail = true;
+    const { runId: run2 } = await engine.trigger(wf, {});
+    await waitForRun(engine, run2, 10_000);
+    expect((await engine.getRun(run2))?.status).toBe("failed");
+
+    const retriedRun = await engine.getRun(run1);
+    expect(retriedRun?.status).toBe("completed");
+    expect(retriedRun?.result).toBe("ok");
   });
 
   it("ctx.sleep() between steps completes after delay", async () => {

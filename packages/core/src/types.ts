@@ -26,6 +26,17 @@ export interface RemovalPolicy {
   count?: number;
 }
 
+export interface RunRetentionPolicy {
+  age?: number;
+  count?: number;
+}
+
+export interface RunRetentionConfig {
+  completed?: RunRetentionPolicy | false;
+  failed?: RunRetentionPolicy | false;
+  cancelled?: RunRetentionPolicy | false;
+}
+
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
 export interface EngineConfig {
@@ -42,6 +53,7 @@ export interface EngineConfig {
   prefix?: string;
   logger?: Logger;
   middleware?: MiddlewareConfig;
+  retention?: RunRetentionConfig | false;
 }
 
 export interface MiddlewareConfig {
@@ -158,6 +170,11 @@ export type RunStatus =
   | "failed"
   | "cancelled"
   | "stalled";
+
+export type TerminalRunStatus = Extract<
+  RunStatus,
+  "completed" | "failed" | "cancelled"
+>;
 
 export type StepStatus =
   | "pending"
