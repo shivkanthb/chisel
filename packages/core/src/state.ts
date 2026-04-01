@@ -3,9 +3,11 @@ import type { ConnectionOptions } from "bullmq";
 import type {
   ListRunsOptions,
   ListRunsResult,
+  RunRetentionPolicy,
   RunInfo,
   RunStatus,
   StepInfo,
+  TerminalRunStatus,
 } from "./types";
 
 /**
@@ -15,15 +17,18 @@ import type {
  *   {prefix}:run:{runId}              → Hash: workflow metadata + status
  *   {prefix}:run:{runId}:steps        → Hash: step name → JSON { status, result, duration, attempts, order }
  *   {prefix}:workflow:{workflowId}:runs → Sorted set: recent runIds by timestamp
+ *   {prefix}:workflow:{workflowId}:runs:{status} → Sorted set: terminal runIds by completion timestamp
  *   {prefix}:dedup:{key}              → String with TTL: deduplication lock
  */
 export class StateManager {
   private redis: Redis;
   private prefix: string;
+  private retention: Record<TerminalRunStatus, RunRetentionPolicy | false>;
 
   constructor(
     connection: ConnectionOptions,
-    prefix: string = "chisel"
+    prefix: string = "chisel",
+    retention: Record<TerminalRunStatus, RunRetentionPolicy | false>
   ) {
     if ("url" in connection && connection.url) {
       this.redis = new Redis(connection.url as string);
@@ -31,10 +36,34 @@ export class StateManager {
       this.redis = new Redis(connection as any);
     }
     this.prefix = prefix;
+    this.retention = retention;
   }
 
   private key(...parts: string[]): string {
     return [this.prefix, ...parts].join(":");
+  }
+
+  private workflowRunsKey(workflowId: string): string {
+    return this.key("workflow", workflowId, "runs");
+  }
+
+  private terminalRunsKey(
+    workflowId: string,
+    status: TerminalRunStatus
+  ): string {
+    return this.key("workflow", workflowId, "runs", status);
+  }
+
+  private runKey(runId: string): string {
+    return this.key("run", runId);
+  }
+
+  private runStepsKey(runId: string): string {
+    return this.key("run", runId, "steps");
+  }
+
+  private terminalStatuses(): TerminalRunStatus[] {
+    return ["completed", "failed", "cancelled"];
   }
 
   // ─── Run state ───────────────────────────────────────────────────────
@@ -45,7 +74,7 @@ export class StateManager {
     data: unknown
   ): Promise<void> {
     const now = Date.now();
-    const runKey = this.key("run", runId);
+    const runKey = this.runKey(runId);
 
     await this.redis
       .multi()
@@ -56,7 +85,7 @@ export class StateManager {
         data: JSON.stringify(data),
         startedAt: String(now),
       })
-      .zadd(this.key("workflow", workflowId, "runs"), now, runId)
+      .zadd(this.workflowRunsKey(workflowId), now, runId)
       .exec();
   }
 
@@ -66,16 +95,16 @@ export class StateManager {
     extra?: Record<string, string>
   ): Promise<void> {
     const fields: Record<string, string> = { status, ...extra };
-    await this.redis.hset(this.key("run", runId), fields);
+    await this.redis.hset(this.runKey(runId), fields);
   }
 
   async getRun(runId: string): Promise<RunInfo | null> {
-    const runKey = this.key("run", runId);
+    const runKey = this.runKey(runId);
     const raw = await this.redis.hgetall(runKey);
 
     if (!raw.id) return null;
 
-    const stepsRaw = await this.redis.hgetall(this.key("run", runId, "steps"));
+    const stepsRaw = await this.redis.hgetall(this.runStepsKey(runId));
     const steps: StepInfo[] = Object.entries(stepsRaw)
       .map(([name, json]) => {
         const parsed = JSON.parse(json);
@@ -114,33 +143,38 @@ export class StateManager {
     };
   }
 
-  async setRunResult(runId: string, result: unknown): Promise<void> {
-    await this.redis.hset(this.key("run", runId), {
-      status: "completed" satisfies RunStatus,
+  async setRunResult(
+    runId: string,
+    workflowId: string,
+    result: unknown
+  ): Promise<void> {
+    await this.setRunTerminalState(runId, workflowId, "completed", {
       result: JSON.stringify(result),
-      completedAt: String(Date.now()),
     });
   }
 
   async setRunError(
     runId: string,
+    workflowId: string,
     error: string,
     failedStep?: string
   ): Promise<void> {
     const fields: Record<string, string> = {
-      status: "failed" satisfies RunStatus,
       error,
-      completedAt: String(Date.now()),
     };
     if (failedStep) fields.failedStep = failedStep;
-    await this.redis.hset(this.key("run", runId), fields);
+    await this.setRunTerminalState(runId, workflowId, "failed", fields);
+  }
+
+  async setRunCancelled(runId: string, workflowId: string): Promise<void> {
+    await this.setRunTerminalState(runId, workflowId, "cancelled");
   }
 
   // ─── Step state ──────────────────────────────────────────────────────
 
   async updateStep(runId: string, step: StepInfo): Promise<void> {
-    const runKey = this.key("run", runId);
-    const stepsKey = this.key("run", runId, "steps");
+    const runKey = this.runKey(runId);
+    const stepsKey = this.runStepsKey(runId);
 
     let order = step.order;
     if (order == null) {
@@ -180,7 +214,7 @@ export class StateManager {
     options: ListRunsOptions = {}
   ): Promise<ListRunsResult> {
     const { limit = 50, order = "desc", cursor, status } = options;
-    const key = this.key("workflow", workflowId, "runs");
+    const key = this.workflowRunsKey(workflowId);
     const fetchCount = limit + 1;
 
     let runIds: string[];
@@ -226,6 +260,84 @@ export class StateManager {
 
     const existingRunId = await this.redis.get(key);
     return { isDuplicate: true, existingRunId: existingRunId ?? undefined };
+  }
+
+  async clearTerminalRunIndexes(
+    runId: string,
+    workflowId: string
+  ): Promise<void> {
+    const multi = this.redis.multi();
+    for (const status of this.terminalStatuses()) {
+      multi.zrem(this.terminalRunsKey(workflowId, status), runId);
+    }
+    await multi.exec();
+  }
+
+  private async setRunTerminalState(
+    runId: string,
+    workflowId: string,
+    status: TerminalRunStatus,
+    extra: Record<string, string> = {}
+  ): Promise<void> {
+    const completedAt = Date.now();
+    await this.redis
+      .multi()
+      .hset(this.runKey(runId), {
+        status,
+        completedAt: String(completedAt),
+        ...extra,
+      })
+      .zadd(this.terminalRunsKey(workflowId, status), completedAt, runId)
+      .exec();
+
+    await this.pruneTerminalRuns(workflowId, status);
+  }
+
+  private async pruneTerminalRuns(
+    workflowId: string,
+    status: TerminalRunStatus
+  ): Promise<void> {
+    const policy = this.retention[status];
+    if (!policy) return;
+
+    const statusKey = this.terminalRunsKey(workflowId, status);
+    const runIdsToPrune = new Set<string>();
+
+    if (policy.age != null) {
+      const cutoff = Date.now() - policy.age * 1000;
+      const expiredRunIds = await this.redis.zrangebyscore(
+        statusKey,
+        "-inf",
+        cutoff
+      );
+      for (const runId of expiredRunIds) {
+        runIdsToPrune.add(runId);
+      }
+    }
+
+    if (policy.count != null) {
+      const total = await this.redis.zcard(statusKey);
+      const excess = total - policy.count;
+      if (excess > 0) {
+        const overflowRunIds = await this.redis.zrange(statusKey, 0, excess - 1);
+        for (const runId of overflowRunIds) {
+          runIdsToPrune.add(runId);
+        }
+      }
+    }
+
+    if (runIdsToPrune.size === 0) return;
+
+    const multi = this.redis.multi();
+    for (const runId of runIdsToPrune) {
+      multi.del(this.runKey(runId));
+      multi.del(this.runStepsKey(runId));
+      multi.zrem(this.workflowRunsKey(workflowId), runId);
+      for (const terminalStatus of this.terminalStatuses()) {
+        multi.zrem(this.terminalRunsKey(workflowId, terminalStatus), runId);
+      }
+    }
+    await multi.exec();
   }
 
   // ─── Cleanup ─────────────────────────────────────────────────────────
