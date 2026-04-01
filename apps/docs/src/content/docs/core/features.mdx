@@ -15,6 +15,16 @@ const data = await ctx.step('expensive-call', async () => {
 });
 ```
 
+### Bounded Redis retention
+
+Terminal runs are pruned by default so run metadata and checkpoints do not grow without bound in Redis.
+
+- `completed`: 7 days or 10,000 runs per workflow
+- `failed`: 30 days or 10,000 runs per workflow
+- `cancelled`: 7 days or 10,000 runs per workflow
+
+You can override or disable that behavior with `createEngine({ retention: ... })`.
+
 ### Step and workflow retries
 
 Workflow retries are handled by BullMQ. Step retries are handled inside `ctx.step()` and can be overridden per step.
