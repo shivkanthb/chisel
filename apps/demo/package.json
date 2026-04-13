@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "chisel-engine": "0.2.4",
-    "chisel-studio": "0.2.2"
+    "chisel-studio": "0.2.3"
   }
 }
