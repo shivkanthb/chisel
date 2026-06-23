@@ -80,11 +80,14 @@ export function createSseRoute(engine: Engine): Hono {
           .catch(() => {});
       }, 15_000);
 
-      // Keep the stream alive until client disconnects
+      // Wait for disconnect via onAbort so the finally runs and unsubscribes.
+      // A `while (true) { await stream.sleep() }` loop never exits on abort and
+      // leaks the handlers + heartbeat on every reconnect.
       try {
-        while (true) {
-          await stream.sleep(1000);
-        }
+        await new Promise<void>((resolve) => {
+          if (stream.aborted) resolve();
+          else stream.onAbort(() => resolve());
+        });
       } finally {
         clearInterval(heartbeat);
         for (const [event, handler] of handlers) {
