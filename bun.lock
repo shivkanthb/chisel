@@ -12,8 +12,9 @@
     "apps/demo": {
       "name": "chisel-demo",
       "dependencies": {
-        "chisel-engine": "workspace:*",
-        "chisel-studio": "workspace:*",
+        "chisel-engine": "0.2.4",
+        "chisel-studio": "0.2.3",
+        "ioredis": "^5.4.0",
       },
     },
     "apps/docs": {
@@ -34,7 +35,7 @@
     },
     "packages/core": {
       "name": "chisel-engine",
-      "version": "0.2.1",
+      "version": "0.2.5",
       "dependencies": {
         "bullmq": "^5.0.0",
         "ioredis": "^5.0.0",
@@ -55,7 +56,7 @@
     },
     "packages/studio": {
       "name": "chisel-studio",
-      "version": "0.1.1",
+      "version": "0.2.4",
       "dependencies": {
         "@hono/node-server": "^1.14.0",
         "hono": "^4.0.0",

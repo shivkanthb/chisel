@@ -509,9 +509,8 @@ export class Engine {
       runId,
     });
 
-    // Create AbortController for this run and register it
+    // Registered inside the try below so an early throw can't orphan it.
     const abortController = new AbortController();
-    this.activeAbortControllers.set(runId, abortController);
 
     // Update run status to running
     await this.state.updateRunStatus(runId, "running");
@@ -538,6 +537,8 @@ export class Engine {
     const startedAt = Date.now();
 
     try {
+      this.activeAbortControllers.set(runId, abortController);
+
       // Keyed concurrency lock — inside try so the throw is caught gracefully
       if (workflow.config.concurrency?.key) {
         concurrencyKey = workflow.config.concurrency.key(job.data.input);

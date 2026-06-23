@@ -2,8 +2,11 @@
  * Chisel Studio demo server — deployable to Railway or any host.
  *
  * Env vars:
- *   REDIS_URL  — required
- *   STUDIO_PORT — server port (default: 4040)
+ *   REDIS_URL                 — required (on Railway, use the private
+ *                               redis.railway.internal host; family=0 auto-added)
+ *   STUDIO_PORT               — server port (default: 4040)
+ *   DEMO_TRIGGER_INTERVAL_MS  — ms between demo runs (default: 45000)
+ *   DEMO_FLUSH_ON_START       — "1" wipes the demo's Redis namespace on boot
  */
 import { createEngine, defineWorkflow, FatalError } from "chisel-engine";
 import { createStudio } from "chisel-studio";
@@ -14,15 +17,55 @@ if (!process.env.REDIS_URL) {
 }
 
 const port = Number(process.env.STUDIO_PORT) || 4040;
-const connection = { url: process.env.REDIS_URL };
+const PREFIX = "chisel-studio-demo";
+const triggerIntervalMs = Number(process.env.DEMO_TRIGGER_INTERVAL_MS) || 45_000;
+
+// Railway's private host is IPv6-only; ioredis needs family=0 to resolve it.
+function normalizeRedisUrl(url: string): string {
+  if (url.includes(".railway.internal") && !/[?&]family=/.test(url)) {
+    return url + (url.includes("?") ? "&" : "?") + "family=0";
+  }
+  return url;
+}
+
+const redisUrl = normalizeRedisUrl(process.env.REDIS_URL);
+const connection = { url: redisUrl };
+
+// Opt-in: wipe the demo's Redis namespace on boot (DEMO_FLUSH_ON_START=1).
+if (process.env.DEMO_FLUSH_ON_START === "1") {
+  const { default: Redis } = await import("ioredis");
+  const redis = new Redis(redisUrl);
+  let cursor = "0";
+  let deleted = 0;
+  do {
+    const [next, keys] = await redis.scan(
+      cursor, "MATCH", `${PREFIX}:*`, "COUNT", 500
+    );
+    cursor = next;
+    if (keys.length) {
+      deleted += keys.length;
+      await redis.del(...keys);
+    }
+  } while (cursor !== "0");
+  await redis.quit();
+  console.log(`Flushed ${deleted} demo keys (${PREFIX}:*) from Redis`);
+}
 
 const engine = createEngine({
   connection: connection as any,
-  prefix: "chisel-studio-demo",
+  prefix: PREFIX,
   defaults: {
     retries: 3,
     backoff: { type: "exponential", delay: 1000 },
     timeout: 30_000,
+    // Demo-sized caps so Redis stays bounded.
+    removeOnComplete: { age: 1800, count: 50 },
+    removeOnFail: { age: 3600, count: 50 },
+  },
+  retention: {
+    completed: { age: 1800, count: 30 },
+    failed: { age: 3600, count: 30 },
+    cancelled: { age: 1800, count: 30 },
   },
 });
 
@@ -279,8 +322,11 @@ await engine.trigger(dripCampaign, {
 
 console.log("Demo data seeded! Triggered 11 workflow runs.\n");
 console.log(`Studio running at ${studio.url}\n`);
+console.log(
+  `Trickling a new run every ${Math.round(triggerIntervalMs / 1000)}s\n`
+);
 
-// Continuously trigger new runs every 10s
+// Continuously trigger new runs (slow trickle).
 setInterval(async () => {
   const workflows = [
     () =>
@@ -303,7 +349,7 @@ setInterval(async () => {
 
   const random = workflows[Math.floor(Math.random() * workflows.length)];
   await random();
-}, 10_000);
+}, triggerIntervalMs);
 
 // Graceful shutdown
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
