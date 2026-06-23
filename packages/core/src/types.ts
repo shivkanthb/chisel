@@ -216,7 +216,8 @@ export interface RunInfo {
 
 export interface HealthInfo {
   connected: boolean;
-  redis: { host: string; port: number } | { url: string };
+  // Host/port only — credentials are never exposed here.
+  redis: { host: string; port?: number };
   workers: number;
   queues: string[];
 }

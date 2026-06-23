@@ -32,6 +32,24 @@ const DEFAULT_RUN_RETENTION: Record<TerminalRunStatus, RunRetentionPolicy> = {
   cancelled: { age: 7 * 24 * 60 * 60, count: 10_000 },
 };
 
+/**
+ * Strip credentials from a connection config so it's safe to expose (health()).
+ * Returns host/port only — never the password.
+ */
+export function redactConnection(
+  connection: EngineConfig["connection"]
+): { host: string; port?: number } {
+  if ("url" in connection) {
+    try {
+      const u = new URL(connection.url);
+      return { host: u.hostname, port: u.port ? Number(u.port) : 6379 };
+    } catch {
+      return { host: "redacted" };
+    }
+  }
+  return { host: connection.host, port: connection.port };
+}
+
 export class Engine {
   private config: EngineConfig;
   private workflows = new Map<string, Workflow<any, any>>();
@@ -444,7 +462,7 @@ export class Engine {
 
     return {
       connected,
-      redis: this.config.connection,
+      redis: redactConnection(this.config.connection),
       workers: this.workers.size,
       queues: Array.from(this.queues.keys()),
     };
