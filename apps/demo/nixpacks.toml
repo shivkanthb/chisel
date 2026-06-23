@@ -2,7 +2,9 @@
 nixPkgs = ["bun"]
 
 [phases.install]
-cmds = ["bun install"]
+# --force re-resolves from the registry so redeploys can't reuse a stale
+# node_modules layer (e.g. an old chisel-engine pinned in package.json).
+cmds = ["bun install --force"]
 
 [start]
 cmd = "bun run server.ts"
